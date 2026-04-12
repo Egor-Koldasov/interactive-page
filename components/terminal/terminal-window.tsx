@@ -88,7 +88,7 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
     description: "A sleek glass terminal with cool neon accents.",
     shellClassName:
       "overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,11,20,0.72)] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-xs focus-visible:border-white/18",
-    headerClassName: "border-b border-white/8 px-3 sm:px-4",
+    headerClassName: "border-b border-white/8",
     screenClassName: "relative flex min-h-0 flex-1 flex-col",
     overlayClassName: "pointer-events-none absolute inset-0 opacity-20",
     overlayStyle: {
@@ -119,9 +119,9 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
     tabInactiveClassName:
       "group flex items-center h-full gap-1.5 hover:bg-white/1 px-8 py-1.5 text-sm text-zinc-400 transition hover:text-zinc-200 relative",
     closeButtonActiveClassName:
-      "absolute top-1 right-2 text-xl text-zinc-400 opacity-0 pointer-events-none transition hover:text-zinc-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+      "absolute top-2 right-2 text-xl text-zinc-400 opacity-0 pointer-events-none transition hover:text-zinc-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
     closeButtonInactiveClassName:
-      "absolute top-1 right-2 text-xl text-zinc-400 opacity-0 pointer-events-none transition hover:text-zinc-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+      "absolute top-2 right-2 text-xl text-zinc-400 opacity-0 pointer-events-none transition hover:text-zinc-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
     addTabClassName:
       "px-3 py-1.5 text-3xl text-zinc-400 hover:text-zinc-100 transition",
     addTabLabel: "+",
@@ -143,13 +143,13 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
     description:
       "A beige phosphor CRT with glow, scanlines, and heavier chrome.",
     shellClassName:
-      "retro-terminal-shell gap-2 focus-visible:ring-2 focus-visible:ring-[#ebd2a0]/45",
-    headerClassName: "retro-terminal-header px-3 py-2 sm:px-4",
+      "retro-terminal-shell border border-[#fff8e02e] rounded-xl focus-visible:ring-2 focus-visible:ring-[#181815]/45 overflow-hidden",
+    headerClassName: "retro-terminal-header bg-[#181815]",
     headerMetaClassName: "hidden min-w-0 items-center gap-2 sm:flex",
     statusLightClassName:
       "h-2.5 w-2.5 rounded-full bg-[#8eff87] [animation:terminal-led-pulse_2.4s_ease-in-out_infinite]",
     screenClassName:
-      "retro-terminal-screen relative flex min-h-0 flex-1 flex-col",
+      "retro-terminal-screen rounded-b-xl relative flex min-h-0 flex-1 flex-col",
     overlayClassName: "pointer-events-none absolute inset-0 opacity-35",
     overlayStyle: {
       background: [
@@ -174,16 +174,17 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
       error: "text-[#ff9a75] [text-shadow:0_0_10px_rgba(255,154,117,0.2)]",
     },
     tabActiveClassName:
-      "group flex items-center gap-1.5 rounded-md border border-[#6d532f] bg-[linear-gradient(180deg,rgba(243,227,192,0.96),rgba(194,163,109,0.96))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_1px_2px_rgba(0,0,0,0.32)] transition",
+      "group flex items-center h-full gap-1.5 bg-white/4 px-8 py-1.5 text-sm text-white transition" +
+      " relative",
     tabInactiveClassName:
-      "group flex items-center gap-1.5 rounded-md border border-[#5b472e] bg-[linear-gradient(180deg,rgba(96,75,49,0.96),rgba(68,52,34,0.98))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:brightness-110",
+      "group flex items-center h-full gap-1.5 hover:bg-white/1 px-8 py-1.5 text-sm text-zinc-400 transition hover:text-zinc-200 relative",
     closeButtonActiveClassName:
-      "rounded-sm px-1 leading-none text-stone-700 opacity-0 transition hover:bg-black/10 hover:text-stone-950 group-hover:opacity-100 group-focus-within:opacity-100",
+      "absolute top-1 right-2 text-xl text-zinc-400 opacity-0 pointer-events-none transition hover:text-zinc-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
     closeButtonInactiveClassName:
-      "rounded-sm px-1 leading-none text-stone-400 opacity-0 transition hover:bg-white/10 hover:text-stone-100 group-hover:opacity-100 group-focus-within:opacity-100",
+      "absolute top-1 right-2 text-xl text-zinc-400 opacity-0 pointer-events-none transition hover:text-zinc-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
     addTabClassName:
-      "rounded-md border border-dashed border-[#6f5634] bg-[linear-gradient(180deg,rgba(117,95,67,0.9),rgba(84,64,43,0.96))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-100 transition hover:brightness-110",
-    addTabLabel: "+ Tab",
+      "px-3 py-1.5 text-3xl text-zinc-400 hover:text-zinc-100 transition",
+    addTabLabel: "+",
     linkClassName:
       "underline underline-offset-4 transition hover:text-[#ffe4a6]",
     cursorStyle: {
