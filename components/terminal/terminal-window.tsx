@@ -88,7 +88,7 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
     description: "A sleek glass terminal with cool neon accents.",
     shellClassName:
       "overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,11,20,0.72)] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-xs focus-visible:border-white/18",
-    headerClassName: "border-b border-white/8 px-3 py-2 sm:px-4",
+    headerClassName: "border-b border-white/8 px-3 sm:px-4",
     screenClassName: "relative flex min-h-0 flex-1 flex-col",
     overlayClassName: "pointer-events-none absolute inset-0 opacity-20",
     overlayStyle: {
@@ -114,16 +114,17 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
       error: "text-rose-300",
     },
     tabActiveClassName:
-      "flex items-center gap-1.5 rounded-full border border-white/14 bg-white/10 px-3 py-1.5 text-sm text-white transition",
+      "group flex items-center h-full gap-1.5 bg-white/4 px-8 py-1.5 text-sm text-white transition" +
+      " relative",
     tabInactiveClassName:
-      "flex items-center gap-1.5 rounded-full border border-transparent bg-black/20 px-3 py-1.5 text-sm text-zinc-400 transition hover:border-white/10 hover:text-zinc-200",
+      "group flex items-center h-full gap-1.5 hover:bg-white/1 px-8 py-1.5 text-sm text-zinc-400 transition hover:text-zinc-200 relative",
     closeButtonActiveClassName:
-      "rounded-full px-1 text-zinc-500 transition hover:bg-white/8 hover:text-zinc-200",
+      "absolute top-1 right-2 text-xl text-zinc-400 opacity-0 pointer-events-none transition hover:text-zinc-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
     closeButtonInactiveClassName:
-      "rounded-full px-1 text-zinc-500 transition hover:bg-white/8 hover:text-zinc-200",
+      "absolute top-1 right-2 text-xl text-zinc-400 opacity-0 pointer-events-none transition hover:text-zinc-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
     addTabClassName:
-      "rounded-full border border-dashed border-white/12 bg-black/20 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/8",
-    addTabLabel: "+ Add tab",
+      "px-3 py-1.5 text-3xl text-zinc-400 hover:text-zinc-100 transition",
+    addTabLabel: "+",
     linkClassName:
       "underline decoration-white/20 underline-offset-4 transition hover:text-white",
     cursorStyle: {
@@ -145,9 +146,6 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
       "retro-terminal-shell gap-2 focus-visible:ring-2 focus-visible:ring-[#ebd2a0]/45",
     headerClassName: "retro-terminal-header px-3 py-2 sm:px-4",
     headerMetaClassName: "hidden min-w-0 items-center gap-2 sm:flex",
-    headerLabel: "Phosphor Console Mk. II",
-    headerLabelClassName:
-      "truncate font-mono text-[0.62rem] font-semibold uppercase tracking-[0.32em] text-stone-900/80",
     statusLightClassName:
       "h-2.5 w-2.5 rounded-full bg-[#8eff87] [animation:terminal-led-pulse_2.4s_ease-in-out_infinite]",
     screenClassName:
@@ -176,13 +174,13 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
       error: "text-[#ff9a75] [text-shadow:0_0_10px_rgba(255,154,117,0.2)]",
     },
     tabActiveClassName:
-      "flex items-center gap-1.5 rounded-md border border-[#6d532f] bg-[linear-gradient(180deg,rgba(243,227,192,0.96),rgba(194,163,109,0.96))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_1px_2px_rgba(0,0,0,0.32)] transition",
+      "group flex items-center gap-1.5 rounded-md border border-[#6d532f] bg-[linear-gradient(180deg,rgba(243,227,192,0.96),rgba(194,163,109,0.96))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_1px_2px_rgba(0,0,0,0.32)] transition",
     tabInactiveClassName:
-      "flex items-center gap-1.5 rounded-md border border-[#5b472e] bg-[linear-gradient(180deg,rgba(96,75,49,0.96),rgba(68,52,34,0.98))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:brightness-110",
+      "group flex items-center gap-1.5 rounded-md border border-[#5b472e] bg-[linear-gradient(180deg,rgba(96,75,49,0.96),rgba(68,52,34,0.98))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:brightness-110",
     closeButtonActiveClassName:
-      "rounded-sm px-1 leading-none text-stone-700 transition hover:bg-black/10 hover:text-stone-950",
+      "rounded-sm px-1 leading-none text-stone-700 opacity-0 transition hover:bg-black/10 hover:text-stone-950 group-hover:opacity-100 group-focus-within:opacity-100",
     closeButtonInactiveClassName:
-      "rounded-sm px-1 leading-none text-stone-400 transition hover:bg-white/10 hover:text-stone-100",
+      "rounded-sm px-1 leading-none text-stone-400 opacity-0 transition hover:bg-white/10 hover:text-stone-100 group-hover:opacity-100 group-focus-within:opacity-100",
     addTabClassName:
       "rounded-md border border-dashed border-[#6f5634] bg-[linear-gradient(180deg,rgba(117,95,67,0.9),rgba(84,64,43,0.96))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-100 transition hover:brightness-110",
     addTabLabel: "+ Tab",
@@ -305,7 +303,7 @@ function isTerminalThemeId(value: string): value is TerminalThemeId {
   return terminalThemeOrder.includes(value as TerminalThemeId);
 }
 
-function themeHelpLines(currentThemeId: TerminalThemeId): TerminalLine[] {
+function themeHelpLines(): TerminalLine[] {
   return [
     [segment("Theme commands", "accent")],
     [
@@ -317,12 +315,12 @@ function themeHelpLines(currentThemeId: TerminalThemeId): TerminalLine[] {
       segment("   Switch to a theme by name.", "muted"),
     ],
     [
-      segment("  theme help", "success"),
-      segment("  Show theme usage and examples.", "muted"),
+      segment("  theme current", "success"),
+      segment(" Show the active theme.", "muted"),
     ],
     [
-      segment("Current: ", "muted"),
-      segment(terminalThemes[currentThemeId].name, "accent"),
+      segment("  theme help", "success"),
+      segment("  Show theme usage and examples.", "muted"),
     ],
     [segment("Example: ", "muted"), segment("theme set retro", "success")],
   ];
@@ -336,11 +334,21 @@ function themeListLines(currentThemeId: TerminalThemeId): TerminalLine[] {
       const isActive = themeId === currentThemeId;
 
       return [
-        segment(`  ${theme.name}`, isActive ? "success" : "default"),
+        ...(isActive ? [segment("  [active] ", "accent")] : [segment("  ")]),
+        segment(theme.name, isActive ? "success" : "default"),
         segment(`  ${theme.description}`, "muted"),
-        ...(isActive ? [segment("  [active]", "accent")] : []),
       ];
     }),
+  ];
+}
+
+function themeCurrentLines(currentThemeId: TerminalThemeId): TerminalLine[] {
+  const theme = terminalThemes[currentThemeId];
+
+  return [
+    [segment("Current theme", "accent")],
+    [segment(`  ${theme.name}`, "success")],
+    [segment(`  ${theme.description}`, "muted")],
   ];
 }
 
@@ -349,17 +357,21 @@ function runThemeCommand(
   currentThemeId: TerminalThemeId,
 ): CommandResult {
   if (args.length === 0) {
-    return { entries: [output(themeHelpLines(currentThemeId))] };
+    return { entries: [output(themeHelpLines())] };
   }
 
   const subcommand = args[0]?.toLowerCase();
 
   if (subcommand === "help") {
-    return { entries: [output(themeHelpLines(currentThemeId))] };
+    return { entries: [output(themeHelpLines())] };
   }
 
   if (subcommand === "list") {
     return { entries: [output(themeListLines(currentThemeId))] };
+  }
+
+  if (subcommand === "current") {
+    return { entries: [output(themeCurrentLines(currentThemeId))] };
   }
 
   if (subcommand === "set") {
@@ -370,7 +382,7 @@ function runThemeCommand(
         entries: [
           output([
             [segment("Usage: theme set <name>", "error")],
-            ...themeHelpLines(currentThemeId),
+            ...themeHelpLines(),
           ]),
         ],
       };
@@ -423,7 +435,7 @@ function runThemeCommand(
     entries: [
       output([
         [segment(`Unknown theme command: ${subcommand}`, "error")],
-        ...themeHelpLines(currentThemeId),
+        ...themeHelpLines(),
       ]),
     ],
   };
@@ -902,7 +914,7 @@ export function TerminalWindow() {
       className={`${activeTheme.shellClassName} flex h-full min-h-[20rem] w-full max-w-3xl flex-col outline-none`}
     >
       <div className={activeTheme.headerClassName}>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 h-full">
           {activeTheme.headerMetaClassName &&
           activeTheme.headerLabel &&
           activeTheme.headerLabelClassName ? (
@@ -919,8 +931,8 @@ export function TerminalWindow() {
             </div>
           ) : null}
 
-          <div className="min-w-0 flex-1 overflow-x-auto">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1 overflow-x-auto h-full">
+            <div className="flex items-center h-full">
               {tabs.map((tab) => {
                 const isActive = tab.id === activeTabId;
 
