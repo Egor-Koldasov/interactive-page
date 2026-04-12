@@ -450,12 +450,6 @@ export function TerminalWindow() {
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLElement>) {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "t") {
-      event.preventDefault();
-      openTab();
-      return;
-    }
-
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "w") {
       event.preventDefault();
       closeTab(activeTabId);
@@ -550,23 +544,8 @@ export function TerminalWindow() {
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
-      className="flex h-full min-h-[20rem] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,11,20,0.9),rgba(4,7,13,0.96))] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-2xl outline-none focus-visible:border-white/18"
+      className="flex h-full min-h-[20rem] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(8,11,20,0.9),rgba(4,7,13,0.96))] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-2xl outline-none focus-visible:border-white/18"
     >
-      <div className="flex items-center justify-between border-b border-white/8 px-4 py-3 sm:px-5">
-        <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-rose-400/90" />
-          <span className="h-3 w-3 rounded-full bg-amber-300/90" />
-          <span className="h-3 w-3 rounded-full bg-emerald-400/90" />
-          <span className="ml-3 text-[0.72rem] font-medium uppercase tracking-[0.2em] text-zinc-400">
-            Terminal
-          </span>
-        </div>
-
-        <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.18em] text-emerald-200">
-          Interactive
-        </div>
-      </div>
-
       <div className="border-b border-white/8 px-3 py-2 sm:px-4">
         <div className="flex items-center gap-2 overflow-x-auto">
           {tabs.map((tab) => {
@@ -722,13 +701,6 @@ export function TerminalWindow() {
           </div>
         </div>
 
-        <div className="border-t border-white/8 bg-black/18 px-4 py-3 text-[0.74rem] text-zinc-400 sm:px-6">
-          <span>Tab autocompletes commands.</span>
-          <span className="mx-2 text-zinc-600">•</span>
-          <span>Cmd/Ctrl+T opens a new shell.</span>
-          <span className="mx-2 text-zinc-600">•</span>
-          <span>{tabs.length} tab(s) open.</span>
-        </div>
       </div>
     </section>
   );
