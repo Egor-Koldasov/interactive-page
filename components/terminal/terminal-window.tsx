@@ -73,32 +73,11 @@ function output(lines: TerminalLine[]): TerminalEntry {
   };
 }
 
-function welcomeEntries(): TerminalEntry[] {
-  return [
-    output([
-      [segment("Interactive shell ready.", "success")],
-      [
-        segment("Type ", "muted"),
-        segment("help", "accent"),
-        segment(" to list commands, or ", "muted"),
-        segment("contacts", "accent"),
-        segment(" to view contact details.", "muted"),
-      ],
-      [
-        segment(
-          "Tip: Press Tab to autocomplete commands. Use + to open more tabs.",
-          "muted",
-        ),
-      ],
-    ]),
-  ];
-}
-
 function createTab(number: number): TerminalTab {
   return {
     id: createId("tab"),
     title: `shell ${number}`,
-    entries: welcomeEntries(),
+    entries: [],
     input: "",
     history: [],
     historyIndex: null,
@@ -596,11 +575,7 @@ export function TerminalWindow() {
             <div className="flex items-start gap-3 break-all">
               <TerminalPrompt />
               <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
-                {activeTab.input.length > 0 ? (
-                  activeTab.input
-                ) : (
-                  <span className="text-zinc-500">Type a command...</span>
-                )}
+                {activeTab.input}
                 <span className="ml-[1px] inline-block h-[1.05em] w-[0.68ch] translate-y-[0.12em] rounded-[2px] bg-emerald-300/90 align-baseline [animation:terminal-cursor_1.05s_steps(1)_infinite]" />
               </span>
             </div>
