@@ -295,15 +295,15 @@ function createInitialTerminalState(): TerminalState {
 
 export function TerminalWindow() {
   const nextTabNumberRef = useRef(2);
+  const terminalRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const [terminalState, setTerminalState] = useState(createInitialTerminalState);
   const { tabs, activeTabId } = terminalState;
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]!;
 
   useEffect(() => {
-    inputRef.current?.focus();
+    terminalRef.current?.focus();
   }, [activeTabId, tabs.length]);
 
   useEffect(() => {
@@ -315,8 +315,8 @@ export function TerminalWindow() {
     panel.scrollTop = panel.scrollHeight;
   }, [activeTab.entries, activeTabId, activeTab.input]);
 
-  function focusInput() {
-    inputRef.current?.focus();
+  function focusTerminal() {
+    terminalRef.current?.focus();
   }
 
   function makeTab() {
@@ -377,7 +377,7 @@ export function TerminalWindow() {
     }));
   }
 
-  function handlePaste(event: React.ClipboardEvent<HTMLInputElement>) {
+  function handlePaste(event: React.ClipboardEvent<HTMLElement>) {
     event.preventDefault();
     appendText(event.clipboardData.getData("text").replace(/\s+/g, " "));
   }
@@ -451,7 +451,13 @@ export function TerminalWindow() {
   }
 
   return (
-    <section className="flex h-full min-h-[20rem] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,11,20,0.9),rgba(4,7,13,0.96))] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-2xl">
+    <section
+      ref={terminalRef}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
+      className="flex h-full min-h-[20rem] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,11,20,0.9),rgba(4,7,13,0.96))] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-2xl outline-none focus-visible:border-white/18"
+    >
       <div className="flex items-center justify-between border-b border-white/8 px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2">
           <span className="h-3 w-3 rounded-full bg-rose-400/90" />
@@ -519,7 +525,7 @@ export function TerminalWindow() {
         <div
           ref={scrollRef}
           className="relative min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6"
-          onMouseDown={focusInput}
+          onMouseDown={focusTerminal}
         >
           <div
             aria-hidden="true"
@@ -600,19 +606,6 @@ export function TerminalWindow() {
             </div>
           </div>
         </div>
-
-        <input
-          ref={inputRef}
-          readOnly
-          value=""
-          aria-label="Terminal input"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          className="pointer-events-none absolute h-0 w-0 opacity-0"
-        />
 
         <div className="border-t border-white/8 bg-black/18 px-4 py-3 text-[0.74rem] text-zinc-400 sm:px-6">
           <span>Tab autocompletes commands.</span>
