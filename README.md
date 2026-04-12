@@ -1,7 +1,15 @@
-## Personal Page Prototype
+# Egor Koldasov Landing Page
 
-Open [personal_page_prototype.html](./personal_page_prototype.html) in a browser to see the
-prototype landing page with the animated ASCII background.
+Next.js + Tailwind landing page inspired by the original prototype, rebuilt as a
+single-page app with:
 
-Use `createWindyForestAscii(element, options?)` from `windy-forest.js` to render the effect
-inside any DOM element with a fixed size.
+- a reusable animated background system
+- a React/TypeScript windy ASCII forest scene
+- an interactive multi-tab terminal with `help` and `contacts`
+
+## Run locally
+
+```bash
+npm install
+npm run dev
+```
