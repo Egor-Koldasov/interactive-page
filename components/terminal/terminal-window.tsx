@@ -44,7 +44,9 @@ const commandCatalog = {
   contacts: "Print email, GitHub, and Telegram contact details.",
 } as const;
 
-const commandNames = Object.keys(commandCatalog) as Array<keyof typeof commandCatalog>;
+const commandNames = Object.keys(commandCatalog) as Array<
+  keyof typeof commandCatalog
+>;
 const promptParts = {
   user: "guest",
   host: "egorkolds_page",
@@ -189,7 +191,9 @@ function autocomplete(tab: TerminalTab): TerminalTab {
     return tab;
   }
 
-  const matches = commandNames.filter((command) => command.startsWith(candidate));
+  const matches = commandNames.filter((command) =>
+    command.startsWith(candidate),
+  );
   if (matches.length === 1) {
     return {
       ...tab,
@@ -267,11 +271,17 @@ function insertTextAtCursor(tab: TerminalTab, text: string): TerminalTab {
 function moveCursor(tab: TerminalTab, delta: number): TerminalTab {
   return {
     ...tab,
-    cursorIndex: Math.max(0, Math.min(tab.input.length, tab.cursorIndex + delta)),
+    cursorIndex: Math.max(
+      0,
+      Math.min(tab.input.length, tab.cursorIndex + delta),
+    ),
   };
 }
 
-function moveCursorToEdge(tab: TerminalTab, edge: "start" | "end"): TerminalTab {
+function moveCursorToEdge(
+  tab: TerminalTab,
+  edge: "start" | "end",
+): TerminalTab {
   return {
     ...tab,
     cursorIndex: edge === "start" ? 0 : tab.input.length,
@@ -335,6 +345,15 @@ function TerminalPrompt() {
   );
 }
 
+function getCursorGlyph(input: string, cursorIndex: number) {
+  const glyph = input[cursorIndex];
+  if (!glyph) {
+    return "\u00A0";
+  }
+
+  return glyph === " " ? "\u00A0" : glyph;
+}
+
 function createInitialTerminalState(): TerminalState {
   const firstTab = createTab(1);
   return {
@@ -347,10 +366,13 @@ export function TerminalWindow() {
   const nextTabNumberRef = useRef(2);
   const terminalRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [terminalState, setTerminalState] = useState(createInitialTerminalState);
+  const [terminalState, setTerminalState] = useState(
+    createInitialTerminalState,
+  );
   const { tabs, activeTabId } = terminalState;
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]!;
+  const cursorGlyph = getCursorGlyph(activeTab.input, activeTab.cursorIndex);
 
   useEffect(() => {
     terminalRef.current?.focus();
@@ -394,7 +416,9 @@ export function TerminalWindow() {
 
   function closeTab(tabId: string) {
     setTerminalState((currentState) => {
-      const closingIndex = currentState.tabs.findIndex((tab) => tab.id === tabId);
+      const closingIndex = currentState.tabs.findIndex(
+        (tab) => tab.id === tabId,
+      );
       const remainingTabs = currentState.tabs.filter((tab) => tab.id !== tabId);
 
       if (remainingTabs.length === 0) {
@@ -409,7 +433,8 @@ export function TerminalWindow() {
         tabs: remainingTabs,
         activeTabId:
           currentState.activeTabId === tabId
-            ? (remainingTabs[Math.max(0, closingIndex - 1)] ?? remainingTabs[0]).id
+            ? (remainingTabs[Math.max(0, closingIndex - 1)] ?? remainingTabs[0])
+                .id
             : currentState.activeTabId,
       };
     });
@@ -608,11 +633,14 @@ export function TerminalWindow() {
             }}
           />
 
-          <div className="relative space-y-3 font-mono text-[0.94rem] leading-7 text-zinc-100">
+          <div className="relative space-y-3 font-mono text-[0.94rem] leading-5 text-zinc-100">
             {activeTab.entries.map((entry) => {
               if (entry.type === "command") {
                 return (
-                  <div key={entry.id} className="flex items-start gap-3 break-all">
+                  <div
+                    key={entry.id}
+                    className="flex items-start gap-3 break-all"
+                  >
                     <TerminalPrompt />
                     <span>{entry.command}</span>
                   </div>
@@ -635,7 +663,11 @@ export function TerminalWindow() {
                               key={`${entry.id}-${lineIndex}-${partIndex}`}
                               href={part.href}
                               className={`${className} underline decoration-white/20 underline-offset-4 transition hover:text-white`}
-                              target={part.href.startsWith("http") ? "_blank" : undefined}
+                              target={
+                                part.href.startsWith("http")
+                                  ? "_blank"
+                                  : undefined
+                              }
                               rel={
                                 part.href.startsWith("http")
                                   ? "noreferrer noopener"
@@ -666,8 +698,25 @@ export function TerminalWindow() {
               <TerminalPrompt />
               <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
                 {activeTab.input.slice(0, activeTab.cursorIndex)}
-                <span className="ml-[1px] inline-block h-[1.05em] w-[0.68ch] translate-y-[0.12em] rounded-[2px] bg-emerald-300/90 align-baseline [animation:terminal-cursor_1.05s_steps(1)_infinite]" />
-                {activeTab.input.slice(activeTab.cursorIndex)}
+                <span
+                  className="inline-block w-[1ch] rounded-[2px] align-baseline text-left [animation:terminal-cursor-classic_1.05s_steps(1)_infinite]"
+                  style={
+                    {
+                      lineHeight: "inherit",
+                      boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.96)",
+                      backgroundColor: "rgba(255, 255, 255, 0.96)",
+                      color: "inherit",
+                      ["--terminal-cursor-rest-color" as string]:
+                        "currentColor",
+                    } as React.CSSProperties
+                  }
+                >
+                  {cursorGlyph}
+                </span>
+                {activeTab.input.slice(
+                  activeTab.cursorIndex +
+                    (activeTab.cursorIndex < activeTab.input.length ? 1 : 0),
+                )}
               </span>
             </div>
           </div>

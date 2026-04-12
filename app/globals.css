@@ -54,14 +54,16 @@ input {
   color: #ffffff;
 }
 
-@keyframes terminal-cursor {
+@keyframes terminal-cursor-classic {
   0%,
   45% {
-    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.96);
+    color: #03050a;
   }
 
   46%,
   100% {
-    opacity: 0.18;
+    background-color: transparent;
+    color: var(--terminal-cursor-rest-color);
   }
 }
