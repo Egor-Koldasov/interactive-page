@@ -29,6 +29,7 @@ type TerminalTab = {
   title: string;
   entries: TerminalEntry[];
   input: string;
+  cursorIndex: number;
   history: string[];
   historyIndex: number | null;
 };
@@ -79,6 +80,7 @@ function createTab(number: number): TerminalTab {
     title: `shell ${number}`,
     entries: [],
     input: "",
+    cursorIndex: 0,
     history: [],
     historyIndex: null,
   };
@@ -166,6 +168,7 @@ function submitInput(tab: TerminalTab): TerminalTab {
       ...tab,
       entries: nextEntries,
       input: "",
+      cursorIndex: 0,
       historyIndex: null,
     };
   }
@@ -174,6 +177,7 @@ function submitInput(tab: TerminalTab): TerminalTab {
     ...tab,
     entries: [...nextEntries, ...runCommand(trimmedCommand)],
     input: "",
+    cursorIndex: 0,
     history: [...tab.history, trimmedCommand],
     historyIndex: null,
   };
@@ -190,6 +194,7 @@ function autocomplete(tab: TerminalTab): TerminalTab {
     return {
       ...tab,
       input: matches[0],
+      cursorIndex: matches[0].length,
       historyIndex: null,
     };
   }
@@ -227,14 +232,80 @@ function cycleHistory(tab: TerminalTab, direction: "up" | "down"): TerminalTab {
     return {
       ...tab,
       input: "",
+      cursorIndex: 0,
       historyIndex: null,
     };
   }
 
+  const nextInput = tab.history[nextIndex];
   return {
     ...tab,
-    input: tab.history[nextIndex],
+    input: nextInput,
+    cursorIndex: nextInput.length,
     historyIndex: nextIndex,
+  };
+}
+
+function insertTextAtCursor(tab: TerminalTab, text: string): TerminalTab {
+  if (!text) {
+    return tab;
+  }
+
+  const before = tab.input.slice(0, tab.cursorIndex);
+  const after = tab.input.slice(tab.cursorIndex);
+  const nextInput = `${before}${text}${after}`;
+  const nextCursorIndex = before.length + text.length;
+
+  return {
+    ...tab,
+    input: nextInput,
+    cursorIndex: nextCursorIndex,
+    historyIndex: null,
+  };
+}
+
+function moveCursor(tab: TerminalTab, delta: number): TerminalTab {
+  return {
+    ...tab,
+    cursorIndex: Math.max(0, Math.min(tab.input.length, tab.cursorIndex + delta)),
+  };
+}
+
+function moveCursorToEdge(tab: TerminalTab, edge: "start" | "end"): TerminalTab {
+  return {
+    ...tab,
+    cursorIndex: edge === "start" ? 0 : tab.input.length,
+  };
+}
+
+function deleteBackward(tab: TerminalTab): TerminalTab {
+  if (tab.cursorIndex === 0) {
+    return tab;
+  }
+
+  const before = tab.input.slice(0, tab.cursorIndex - 1);
+  const after = tab.input.slice(tab.cursorIndex);
+
+  return {
+    ...tab,
+    input: `${before}${after}`,
+    cursorIndex: tab.cursorIndex - 1,
+    historyIndex: null,
+  };
+}
+
+function deleteForward(tab: TerminalTab): TerminalTab {
+  if (tab.cursorIndex >= tab.input.length) {
+    return tab;
+  }
+
+  const before = tab.input.slice(0, tab.cursorIndex);
+  const after = tab.input.slice(tab.cursorIndex + 1);
+
+  return {
+    ...tab,
+    input: `${before}${after}`,
+    historyIndex: null,
   };
 }
 
@@ -345,15 +416,7 @@ export function TerminalWindow() {
   }
 
   function appendText(text: string) {
-    if (!text) {
-      return;
-    }
-
-    updateActiveTab((tab) => ({
-      ...tab,
-      input: `${tab.input}${text}`,
-      historyIndex: null,
-    }));
+    updateActiveTab((tab) => insertTextAtCursor(tab, text));
   }
 
   function handlePaste(event: React.ClipboardEvent<HTMLElement>) {
@@ -361,7 +424,7 @@ export function TerminalWindow() {
     appendText(event.clipboardData.getData("text").replace(/\s+/g, " "));
   }
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLElement>) {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "t") {
       event.preventDefault();
       openTab();
@@ -382,11 +445,13 @@ export function TerminalWindow() {
 
     if (event.key === "Backspace") {
       event.preventDefault();
-      updateActiveTab((tab) => ({
-        ...tab,
-        input: tab.input.slice(0, -1),
-        historyIndex: null,
-      }));
+      updateActiveTab(deleteBackward);
+      return;
+    }
+
+    if (event.key === "Delete") {
+      event.preventDefault();
+      updateActiveTab(deleteForward);
       return;
     }
 
@@ -408,11 +473,36 @@ export function TerminalWindow() {
       return;
     }
 
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      updateActiveTab((tab) => moveCursor(tab, -1));
+      return;
+    }
+
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      updateActiveTab((tab) => moveCursor(tab, 1));
+      return;
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      updateActiveTab((tab) => moveCursorToEdge(tab, "start"));
+      return;
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      updateActiveTab((tab) => moveCursorToEdge(tab, "end"));
+      return;
+    }
+
     if (event.key === "Escape") {
       event.preventDefault();
       updateActiveTab((tab) => ({
         ...tab,
         input: "",
+        cursorIndex: 0,
         historyIndex: null,
       }));
       return;
@@ -575,8 +665,9 @@ export function TerminalWindow() {
             <div className="flex items-start gap-3 break-all">
               <TerminalPrompt />
               <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
-                {activeTab.input}
+                {activeTab.input.slice(0, activeTab.cursorIndex)}
                 <span className="ml-[1px] inline-block h-[1.05em] w-[0.68ch] translate-y-[0.12em] rounded-[2px] bg-emerald-300/90 align-baseline [animation:terminal-cursor_1.05s_steps(1)_infinite]" />
+                {activeTab.input.slice(activeTab.cursorIndex)}
               </span>
             </div>
           </div>
