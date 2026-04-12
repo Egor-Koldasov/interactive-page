@@ -544,7 +544,7 @@ export function TerminalWindow() {
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
-      className="flex h-full min-h-[20rem] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(8,11,20,0.9),rgba(4,7,13,0.96))] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-2xl outline-none focus-visible:border-white/18"
+      className="flex h-full min-h-[20rem] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,11,20,0.72)] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-xs outline-none focus-visible:border-white/18"
     >
       <div className="border-b border-white/8 px-3 py-2 sm:px-4">
         <div className="flex items-center gap-2 overflow-x-auto">
@@ -700,7 +700,6 @@ export function TerminalWindow() {
             </div>
           </div>
         </div>
-
       </div>
     </section>
   );
