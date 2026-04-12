@@ -1,9 +1,7 @@
-# one-shot
-A collection of starter repos to run one shot app creation prompts.
+## Personal Page Prototype
 
-## Windy Forest Demo
-
-Open [index.html](./index.html) in a browser to see a colorful ASCII forest animation.
+Open [personal_page_prototype.html](./personal_page_prototype.html) in a browser to see the
+prototype landing page with the animated ASCII background.
 
 Use `createWindyForestAscii(element, options?)` from `windy-forest.js` to render the effect
 inside any DOM element with a fixed size.
