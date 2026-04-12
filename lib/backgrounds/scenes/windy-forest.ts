@@ -218,7 +218,9 @@ export function createWindyForestBackground(
   options: WindyForestBackgroundOptions = {},
 ): BackgroundController {
   if (!(target instanceof HTMLElement)) {
-    throw new Error("createWindyForestBackground requires an HTMLElement target.");
+    throw new Error(
+      "createWindyForestBackground requires an HTMLElement target.",
+    );
   }
 
   ensureTargetStyles(target);
@@ -263,6 +265,7 @@ export function createWindyForestBackground(
   overlay.style.pointerEvents = "none";
   overlay.style.color = "#dff6f4";
   overlay.style.textShadow = "0 0 10px rgba(11, 14, 28, 0.35)";
+  overlay.style.filter = "brightness(0.5)";
   overlay.style.background = [
     "radial-gradient(circle at 20% 15%, rgba(255, 183, 77, 0.16), transparent 30%)",
     "radial-gradient(circle at 80% 22%, rgba(120, 221, 196, 0.18), transparent 28%)",
@@ -296,7 +299,7 @@ export function createWindyForestBackground(
       const cloudWidth = Math.max(8, Math.floor(cols / (5 + cloud)));
       const cloudX =
         Math.floor(
-          ((time * (0.9 + cloud * 0.3)) + cloud * cols * 0.37) %
+          (time * (0.9 + cloud * 0.3) + cloud * cols * 0.37) %
             (cols + cloudWidth * 2),
         ) - cloudWidth;
 
@@ -317,9 +320,12 @@ export function createWindyForestBackground(
       if ((x + Math.floor(time * 7)) % 17 === 0) {
         const sparkleY =
           1 +
-          Math.floor((Math.sin(x * 0.32 + time) + 1) * Math.max(1, horizon * 0.18));
+          Math.floor(
+            (Math.sin(x * 0.32 + time) + 1) * Math.max(1, horizon * 0.18),
+          );
         const sparkleSeed = noise2D(x, sparkleY, 11);
-        const sparkleChar = sparkleSeed > 0.66 ? "." : sparkleSeed > 0.33 ? "'" : "`";
+        const sparkleChar =
+          sparkleSeed > 0.66 ? "." : sparkleSeed > 0.33 ? "'" : "`";
         setCell(cells, colors, x, sparkleY, sparkleChar, "hsl(54 92% 78%)");
       }
 
@@ -401,12 +407,19 @@ export function createWindyForestBackground(
     for (let offsetY = -radiusY; offsetY <= radiusY; offsetY += 1) {
       const spread = tree.canopyRadius - Math.abs(offsetY) * 0.75;
 
-      for (let offsetX = -Math.ceil(spread); offsetX <= Math.ceil(spread); offsetX += 1) {
+      for (
+        let offsetX = -Math.ceil(spread);
+        offsetX <= Math.ceil(spread);
+        offsetX += 1
+      ) {
         const noise =
           Math.sin(offsetX * 1.1 + tree.phase) +
           Math.cos(offsetY * 1.4 + tree.phase * 0.8);
 
-        if (noise < -0.25 || noise2D(offsetX, offsetY, tree.phase * 10) > 0.88) {
+        if (
+          noise < -0.25 ||
+          noise2D(offsetX, offsetY, tree.phase * 10) > 0.88
+        ) {
           continue;
         }
 
@@ -508,7 +521,9 @@ export function createWindyForestBackground(
   ) {
     for (const particle of particles) {
       const wrappedX =
-        (particle.x + time * cols * particle.speed + wind * particle.drift * 4) %
+        (particle.x +
+          time * cols * particle.speed +
+          wind * particle.drift * 4) %
         cols;
       const wrappedY =
         (particle.y + Math.sin(time * 2.8 + particle.phase) * particle.bob) %
@@ -529,8 +544,7 @@ export function createWindyForestBackground(
 
     const elapsed = (now - startTime) / 1000;
     const time = elapsed * (options.speed ?? 0.8);
-    const wind =
-      Math.sin(time * 0.9) * 0.8 + Math.sin(time * 2.4 + 1.2) * 0.45;
+    const wind = Math.sin(time * 0.9) * 0.8 + Math.sin(time * 2.4 + 1.2) * 0.45;
     const cells = Array.from({ length: rows }, () => Array(cols).fill(" "));
     const colors = Array.from({ length: rows }, () =>
       Array<string | null>(cols).fill(null),
