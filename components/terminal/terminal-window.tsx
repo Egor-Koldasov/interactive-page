@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
+import { terminalThemePreferenceStore } from "@/lib/terminal/theme-preference-store";
 
 type LineTone = "default" | "muted" | "accent" | "success" | "error";
 
@@ -37,11 +38,173 @@ type TerminalTab = {
 type TerminalState = {
   tabs: TerminalTab[];
   activeTabId: string;
+  themeId: TerminalThemeId;
+};
+
+type TerminalThemeId = "modern" | "retro";
+
+type TerminalTheme = {
+  id: TerminalThemeId;
+  name: string;
+  description: string;
+  shellClassName: string;
+  headerClassName: string;
+  headerMetaClassName?: string;
+  headerLabel?: string;
+  headerLabelClassName?: string;
+  statusLightClassName?: string;
+  screenClassName: string;
+  overlayClassName: string;
+  overlayStyle: React.CSSProperties;
+  contentClassName: string;
+  promptToneClasses: {
+    user: string;
+    separator: string;
+    host: string;
+    path: string;
+  };
+  toneClasses: Record<LineTone, string>;
+  tabActiveClassName: string;
+  tabInactiveClassName: string;
+  closeButtonActiveClassName: string;
+  closeButtonInactiveClassName: string;
+  addTabClassName: string;
+  addTabLabel: string;
+  linkClassName: string;
+  cursorStyle: React.CSSProperties;
+};
+
+type CommandResult = {
+  entries: TerminalEntry[];
+  nextThemeId?: TerminalThemeId;
+};
+
+const terminalThemeOrder: TerminalThemeId[] = ["modern", "retro"];
+
+const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
+  modern: {
+    id: "modern",
+    name: "modern",
+    description: "A sleek glass terminal with cool neon accents.",
+    shellClassName:
+      "overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,11,20,0.72)] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-xs focus-visible:border-white/18",
+    headerClassName: "border-b border-white/8 px-3 py-2 sm:px-4",
+    screenClassName: "relative flex min-h-0 flex-1 flex-col",
+    overlayClassName: "pointer-events-none absolute inset-0 opacity-20",
+    overlayStyle: {
+      background: [
+        "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)",
+        "linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",
+      ].join(","),
+      backgroundSize: "100% 2.1rem, 2.2rem 100%",
+    },
+    contentClassName:
+      "relative space-y-3 font-mono text-[0.94rem] leading-5 text-zinc-100",
+    promptToneClasses: {
+      user: "text-emerald-300",
+      separator: "text-zinc-500",
+      host: "text-cyan-300",
+      path: "text-zinc-500",
+    },
+    toneClasses: {
+      default: "text-zinc-100",
+      muted: "text-zinc-500",
+      accent: "text-amber-100",
+      success: "text-emerald-300",
+      error: "text-rose-300",
+    },
+    tabActiveClassName:
+      "flex items-center gap-1.5 rounded-full border border-white/14 bg-white/10 px-3 py-1.5 text-sm text-white transition",
+    tabInactiveClassName:
+      "flex items-center gap-1.5 rounded-full border border-transparent bg-black/20 px-3 py-1.5 text-sm text-zinc-400 transition hover:border-white/10 hover:text-zinc-200",
+    closeButtonActiveClassName:
+      "rounded-full px-1 text-zinc-500 transition hover:bg-white/8 hover:text-zinc-200",
+    closeButtonInactiveClassName:
+      "rounded-full px-1 text-zinc-500 transition hover:bg-white/8 hover:text-zinc-200",
+    addTabClassName:
+      "rounded-full border border-dashed border-white/12 bg-black/20 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/8",
+    addTabLabel: "+ Add tab",
+    linkClassName:
+      "underline decoration-white/20 underline-offset-4 transition hover:text-white",
+    cursorStyle: {
+      lineHeight: "inherit",
+      boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.96)",
+      backgroundColor: "rgba(255, 255, 255, 0.96)",
+      color: "inherit",
+      ["--terminal-cursor-rest-color" as string]: "currentColor",
+      ["--terminal-cursor-active-bg" as string]: "rgba(255, 255, 255, 0.96)",
+      ["--terminal-cursor-active-color" as string]: "#03050a",
+    },
+  },
+  retro: {
+    id: "retro",
+    name: "retro",
+    description:
+      "A beige phosphor CRT with glow, scanlines, and heavier chrome.",
+    shellClassName:
+      "retro-terminal-shell gap-2 focus-visible:ring-2 focus-visible:ring-[#ebd2a0]/45",
+    headerClassName: "retro-terminal-header px-3 py-2 sm:px-4",
+    headerMetaClassName: "hidden min-w-0 items-center gap-2 sm:flex",
+    headerLabel: "Phosphor Console Mk. II",
+    headerLabelClassName:
+      "truncate font-mono text-[0.62rem] font-semibold uppercase tracking-[0.32em] text-stone-900/80",
+    statusLightClassName:
+      "h-2.5 w-2.5 rounded-full bg-[#8eff87] [animation:terminal-led-pulse_2.4s_ease-in-out_infinite]",
+    screenClassName:
+      "retro-terminal-screen relative flex min-h-0 flex-1 flex-col",
+    overlayClassName: "pointer-events-none absolute inset-0 opacity-35",
+    overlayStyle: {
+      background: [
+        "linear-gradient(180deg, rgba(198,255,192,0.02), rgba(198,255,192,0.06) 42%, rgba(0,0,0,0.18) 52%, rgba(0,0,0,0.22) 100%)",
+        "linear-gradient(90deg, rgba(110,255,122,0.03), rgba(246,198,107,0.014), rgba(110,255,122,0.03))",
+      ].join(","),
+      backgroundSize: "100% 4px, 4px 100%",
+    },
+    contentClassName:
+      "retro-terminal-text relative space-y-3 font-mono text-[0.94rem] leading-5",
+    promptToneClasses: {
+      user: "text-[#f6c66b] [text-shadow:0_0_8px_rgba(246,198,107,0.25)]",
+      separator: "text-[#6d8c64]",
+      host: "text-[#a4ff9f] [text-shadow:0_0_8px_rgba(126,255,127,0.24)]",
+      path: "text-[#6d8c64]",
+    },
+    toneClasses: {
+      default: "text-[#d6ffd1] [text-shadow:0_0_8px_rgba(123,255,126,0.18)]",
+      muted: "text-[#78966e]",
+      accent: "text-[#f6c66b] [text-shadow:0_0_9px_rgba(246,198,107,0.28)]",
+      success: "text-[#a4ff9f] [text-shadow:0_0_10px_rgba(126,255,127,0.34)]",
+      error: "text-[#ff9a75] [text-shadow:0_0_10px_rgba(255,154,117,0.2)]",
+    },
+    tabActiveClassName:
+      "flex items-center gap-1.5 rounded-md border border-[#6d532f] bg-[linear-gradient(180deg,rgba(243,227,192,0.96),rgba(194,163,109,0.96))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_1px_2px_rgba(0,0,0,0.32)] transition",
+    tabInactiveClassName:
+      "flex items-center gap-1.5 rounded-md border border-[#5b472e] bg-[linear-gradient(180deg,rgba(96,75,49,0.96),rgba(68,52,34,0.98))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:brightness-110",
+    closeButtonActiveClassName:
+      "rounded-sm px-1 leading-none text-stone-700 transition hover:bg-black/10 hover:text-stone-950",
+    closeButtonInactiveClassName:
+      "rounded-sm px-1 leading-none text-stone-400 transition hover:bg-white/10 hover:text-stone-100",
+    addTabClassName:
+      "rounded-md border border-dashed border-[#6f5634] bg-[linear-gradient(180deg,rgba(117,95,67,0.9),rgba(84,64,43,0.96))] px-3 py-1.5 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-stone-100 transition hover:brightness-110",
+    addTabLabel: "+ Tab",
+    linkClassName:
+      "underline underline-offset-4 transition hover:text-[#ffe4a6]",
+    cursorStyle: {
+      lineHeight: "inherit",
+      boxShadow:
+        "inset 0 0 0 1px rgba(181, 255, 173, 0.88), 0 0 10px rgba(181, 255, 173, 0.34)",
+      backgroundColor: "rgba(181, 255, 173, 0.94)",
+      color: "#071108",
+      ["--terminal-cursor-rest-color" as string]: "currentColor",
+      ["--terminal-cursor-active-bg" as string]: "rgba(181, 255, 173, 0.94)",
+      ["--terminal-cursor-active-color" as string]: "#071108",
+    },
+  },
 };
 
 const commandCatalog = {
   help: "Show available commands and usage tips.",
   contacts: "Print email, GitHub, and Telegram contact details.",
+  theme: "List and switch terminal themes.",
 } as const;
 
 const commandNames = Object.keys(commandCatalog) as Array<
@@ -50,7 +213,7 @@ const commandNames = Object.keys(commandCatalog) as Array<
 const promptParts = {
   user: "guest",
   host: "egorkolds_page",
-  path: "~$",
+  path: "$",
 } as const;
 
 let idCounter = 0;
@@ -100,9 +263,13 @@ function helpLines(): TerminalLine[] {
       segment("  Print email, GitHub, and Telegram.", "muted"),
     ],
     [
+      segment("  theme", "success"),
+      segment("     List and switch terminal looks.", "muted"),
+    ],
+    [
       segment("Tips:", "accent"),
       segment(
-        " Tab autocompletes, Arrow Up/Down walks command history.",
+        " Tab autocompletes, Arrow Up/Down walks history, theme list shows presets.",
         "muted",
       ),
     ],
@@ -134,26 +301,168 @@ function contactLines(): TerminalLine[] {
   ];
 }
 
-function runCommand(rawCommand: string): TerminalEntry[] {
-  const command = rawCommand.trim().toLowerCase();
+function isTerminalThemeId(value: string): value is TerminalThemeId {
+  return terminalThemeOrder.includes(value as TerminalThemeId);
+}
 
-  if (command === "help") {
-    return [output(helpLines())];
-  }
-
-  if (command === "contacts") {
-    return [output(contactLines())];
-  }
-
+function themeHelpLines(currentThemeId: TerminalThemeId): TerminalLine[] {
   return [
-    output([
-      [segment(`Command not found: ${rawCommand.trim()}`, "error")],
-      ...helpLines(),
-    ]),
+    [segment("Theme commands", "accent")],
+    [
+      segment("  theme list", "success"),
+      segment("  Show available terminal themes.", "muted"),
+    ],
+    [
+      segment("  theme set <name>", "success"),
+      segment("   Switch to a theme by name.", "muted"),
+    ],
+    [
+      segment("  theme help", "success"),
+      segment("  Show theme usage and examples.", "muted"),
+    ],
+    [
+      segment("Current: ", "muted"),
+      segment(terminalThemes[currentThemeId].name, "accent"),
+    ],
+    [segment("Example: ", "muted"), segment("theme set retro", "success")],
   ];
 }
 
-function submitInput(tab: TerminalTab): TerminalTab {
+function themeListLines(currentThemeId: TerminalThemeId): TerminalLine[] {
+  return [
+    [segment("Available themes", "accent")],
+    ...terminalThemeOrder.map((themeId) => {
+      const theme = terminalThemes[themeId];
+      const isActive = themeId === currentThemeId;
+
+      return [
+        segment(`  ${theme.name}`, isActive ? "success" : "default"),
+        segment(`  ${theme.description}`, "muted"),
+        ...(isActive ? [segment("  [active]", "accent")] : []),
+      ];
+    }),
+  ];
+}
+
+function runThemeCommand(
+  args: string[],
+  currentThemeId: TerminalThemeId,
+): CommandResult {
+  if (args.length === 0) {
+    return { entries: [output(themeHelpLines(currentThemeId))] };
+  }
+
+  const subcommand = args[0]?.toLowerCase();
+
+  if (subcommand === "help") {
+    return { entries: [output(themeHelpLines(currentThemeId))] };
+  }
+
+  if (subcommand === "list") {
+    return { entries: [output(themeListLines(currentThemeId))] };
+  }
+
+  if (subcommand === "set") {
+    const requestedTheme = args[1]?.toLowerCase();
+
+    if (!requestedTheme) {
+      return {
+        entries: [
+          output([
+            [segment("Usage: theme set <name>", "error")],
+            ...themeHelpLines(currentThemeId),
+          ]),
+        ],
+      };
+    }
+
+    if (!isTerminalThemeId(requestedTheme)) {
+      return {
+        entries: [
+          output([
+            [segment(`Unknown theme: ${requestedTheme}`, "error")],
+            [
+              segment("Run ", "muted"),
+              segment("theme list", "accent"),
+              segment(" to see available themes.", "muted"),
+            ],
+          ]),
+        ],
+      };
+    }
+
+    if (requestedTheme === currentThemeId) {
+      return {
+        entries: [
+          output([
+            [
+              segment("Theme already active: ", "muted"),
+              segment(terminalThemes[requestedTheme].name, "accent"),
+            ],
+          ]),
+        ],
+      };
+    }
+
+    return {
+      entries: [
+        output([
+          [
+            segment("Theme changed to ", "muted"),
+            segment(terminalThemes[requestedTheme].name, "success"),
+            segment(".", "muted"),
+          ],
+          [segment(terminalThemes[requestedTheme].description, "muted")],
+        ]),
+      ],
+      nextThemeId: requestedTheme,
+    };
+  }
+
+  return {
+    entries: [
+      output([
+        [segment(`Unknown theme command: ${subcommand}`, "error")],
+        ...themeHelpLines(currentThemeId),
+      ]),
+    ],
+  };
+}
+
+function runCommand(
+  rawCommand: string,
+  currentThemeId: TerminalThemeId,
+): CommandResult {
+  const trimmedCommand = rawCommand.trim();
+  const [command, ...args] = trimmedCommand.split(/\s+/);
+  const normalizedCommand = command.toLowerCase();
+
+  if (normalizedCommand === "help") {
+    return { entries: [output(helpLines())] };
+  }
+
+  if (normalizedCommand === "contacts") {
+    return { entries: [output(contactLines())] };
+  }
+
+  if (normalizedCommand === "theme") {
+    return runThemeCommand(args, currentThemeId);
+  }
+
+  return {
+    entries: [
+      output([
+        [segment(`Command not found: ${trimmedCommand}`, "error")],
+        ...helpLines(),
+      ]),
+    ],
+  };
+}
+
+function submitInput(
+  tab: TerminalTab,
+  currentThemeId: TerminalThemeId,
+): { nextTab: TerminalTab; nextThemeId?: TerminalThemeId } {
   const rawCommand = tab.input;
   const trimmedCommand = rawCommand.trim();
   const nextEntries: TerminalEntry[] = [
@@ -167,21 +476,28 @@ function submitInput(tab: TerminalTab): TerminalTab {
 
   if (!trimmedCommand) {
     return {
-      ...tab,
-      entries: nextEntries,
-      input: "",
-      cursorIndex: 0,
-      historyIndex: null,
+      nextTab: {
+        ...tab,
+        entries: nextEntries,
+        input: "",
+        cursorIndex: 0,
+        historyIndex: null,
+      },
     };
   }
 
+  const commandResult = runCommand(trimmedCommand, currentThemeId);
+
   return {
-    ...tab,
-    entries: [...nextEntries, ...runCommand(trimmedCommand)],
-    input: "",
-    cursorIndex: 0,
-    history: [...tab.history, trimmedCommand],
-    historyIndex: null,
+    nextTab: {
+      ...tab,
+      entries: [...nextEntries, ...commandResult.entries],
+      input: "",
+      cursorIndex: 0,
+      history: [...tab.history, trimmedCommand],
+      historyIndex: null,
+    },
+    nextThemeId: commandResult.nextThemeId,
   };
 }
 
@@ -319,28 +635,17 @@ function deleteForward(tab: TerminalTab): TerminalTab {
   };
 }
 
-function toneClass(tone: LineTone = "default") {
-  switch (tone) {
-    case "muted":
-      return "text-zinc-500";
-    case "accent":
-      return "text-amber-100";
-    case "success":
-      return "text-emerald-300";
-    case "error":
-      return "text-rose-300";
-    default:
-      return "text-zinc-100";
-  }
+function toneClass(theme: TerminalTheme, tone: LineTone = "default") {
+  return theme.toneClasses[tone];
 }
 
-function TerminalPrompt() {
+function TerminalPrompt({ theme }: { theme: TerminalTheme }) {
   return (
     <span className="shrink-0 whitespace-nowrap">
-      <span className="text-emerald-300">{promptParts.user}</span>
-      <span className="text-zinc-500">@</span>
-      <span className="text-cyan-300">{promptParts.host}</span>
-      <span className="text-zinc-500">:{promptParts.path}</span>
+      <span className={theme.promptToneClasses.user}>{promptParts.user}</span>
+      <span className={theme.promptToneClasses.separator}>@</span>
+      <span className={theme.promptToneClasses.host}>{promptParts.host}</span>
+      <span className={theme.promptToneClasses.path}>:{promptParts.path}</span>
     </span>
   );
 }
@@ -359,6 +664,7 @@ function createInitialTerminalState(): TerminalState {
   return {
     tabs: [firstTab],
     activeTabId: firstTab.id,
+    themeId: "modern",
   };
 }
 
@@ -366,17 +672,46 @@ export function TerminalWindow() {
   const nextTabNumberRef = useRef(2);
   const terminalRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isThemePreferenceReady, setIsThemePreferenceReady] = useState(false);
   const [terminalState, setTerminalState] = useState(
     createInitialTerminalState,
   );
-  const { tabs, activeTabId } = terminalState;
+  const { tabs, activeTabId, themeId } = terminalState;
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]!;
+  const activeTheme = terminalThemes[themeId];
   const cursorGlyph = getCursorGlyph(activeTab.input, activeTab.cursorIndex);
 
   useEffect(() => {
     terminalRef.current?.focus();
   }, [activeTabId, tabs.length]);
+
+  useEffect(() => {
+    const storedThemeId = terminalThemePreferenceStore.read();
+
+    startTransition(() => {
+      if (storedThemeId && isTerminalThemeId(storedThemeId)) {
+        setTerminalState((currentState) =>
+          currentState.themeId === storedThemeId
+            ? currentState
+            : {
+                ...currentState,
+                themeId: storedThemeId,
+              },
+        );
+      }
+
+      setIsThemePreferenceReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isThemePreferenceReady) {
+      return;
+    }
+
+    terminalThemePreferenceStore.write(themeId);
+  }, [themeId, isThemePreferenceReady]);
 
   useEffect(() => {
     const panel = scrollRef.current;
@@ -409,6 +744,7 @@ export function TerminalWindow() {
   function openTab() {
     const tab = makeTab();
     setTerminalState((currentState) => ({
+      ...currentState,
       tabs: [...currentState.tabs, tab],
       activeTabId: tab.id,
     }));
@@ -424,12 +760,14 @@ export function TerminalWindow() {
       if (remainingTabs.length === 0) {
         const replacementTab = makeTab();
         return {
+          ...currentState,
           tabs: [replacementTab],
           activeTabId: replacementTab.id,
         };
       }
 
       return {
+        ...currentState,
         tabs: remainingTabs,
         activeTabId:
           currentState.activeTabId === tabId
@@ -458,7 +796,24 @@ export function TerminalWindow() {
 
     if (event.key === "Enter") {
       event.preventDefault();
-      updateActiveTab(submitInput);
+      setTerminalState((currentState) => {
+        const currentTab =
+          currentState.tabs.find(
+            (tab) => tab.id === currentState.activeTabId,
+          ) ?? currentState.tabs[0]!;
+        const { nextTab, nextThemeId } = submitInput(
+          currentTab,
+          currentState.themeId,
+        );
+
+        return {
+          ...currentState,
+          themeId: nextThemeId ?? currentState.themeId,
+          tabs: currentState.tabs.map((tab) =>
+            tab.id === currentState.activeTabId ? nextTab : tab,
+          ),
+        };
+      });
       return;
     }
 
@@ -544,57 +899,81 @@ export function TerminalWindow() {
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
-      className="flex h-full min-h-[20rem] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,11,20,0.72)] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-xs outline-none focus-visible:border-white/18"
+      className={`${activeTheme.shellClassName} flex h-full min-h-[20rem] w-full max-w-3xl flex-col outline-none`}
     >
-      <div className="border-b border-white/8 px-3 py-2 sm:px-4">
-        <div className="flex items-center gap-2 overflow-x-auto">
-          {tabs.map((tab) => {
-            const isActive = tab.id === activeTabId;
+      <div className={activeTheme.headerClassName}>
+        <div className="flex items-center gap-3">
+          {activeTheme.headerMetaClassName &&
+          activeTheme.headerLabel &&
+          activeTheme.headerLabelClassName ? (
+            <div className={activeTheme.headerMetaClassName}>
+              {activeTheme.statusLightClassName ? (
+                <span
+                  aria-hidden="true"
+                  className={activeTheme.statusLightClassName}
+                />
+              ) : null}
+              <span className={activeTheme.headerLabelClassName}>
+                {activeTheme.headerLabel}
+              </span>
+            </div>
+          ) : null}
 
-            return (
-              <div
-                key={tab.id}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition ${
-                  isActive
-                    ? "border-white/14 bg-white/10 text-white"
-                    : "border-transparent bg-black/20 text-zinc-400 hover:border-white/10 hover:text-zinc-200"
-                }`}
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <div className="flex items-center gap-2">
+              {tabs.map((tab) => {
+                const isActive = tab.id === activeTabId;
+
+                return (
+                  <div
+                    key={tab.id}
+                    className={
+                      isActive
+                        ? activeTheme.tabActiveClassName
+                        : activeTheme.tabInactiveClassName
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="cursor-pointer whitespace-nowrap"
+                      onClick={() =>
+                        setTerminalState((currentState) => ({
+                          ...currentState,
+                          activeTabId: tab.id,
+                        }))
+                      }
+                    >
+                      {tab.title}
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        isActive
+                          ? activeTheme.closeButtonActiveClassName
+                          : activeTheme.closeButtonInactiveClassName
+                      }
+                      aria-label={`Close ${tab.title}`}
+                      onClick={() => closeTab(tab.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={openTab}
+                className={activeTheme.addTabClassName}
               >
-                <button
-                  type="button"
-                  className="cursor-pointer"
-                  onClick={() =>
-                    setTerminalState((currentState) => ({
-                      ...currentState,
-                      activeTabId: tab.id,
-                    }))
-                  }
-                >
-                  {tab.title}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-full px-1 text-zinc-500 transition hover:bg-white/8 hover:text-zinc-200"
-                  aria-label={`Close ${tab.title}`}
-                  onClick={() => closeTab(tab.id)}
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })}
-
-          <button
-            type="button"
-            onClick={openTab}
-            className="rounded-full border border-dashed border-white/12 bg-black/20 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/8"
-          >
-            + Add tab
-          </button>
+                {activeTheme.addTabLabel}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div className={activeTheme.screenClassName}>
         <div
           ref={scrollRef}
           className="relative min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6"
@@ -602,17 +981,11 @@ export function TerminalWindow() {
         >
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-20"
-            style={{
-              background: [
-                "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)",
-                "linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",
-              ].join(","),
-              backgroundSize: "100% 2.1rem, 2.2rem 100%",
-            }}
+            className={activeTheme.overlayClassName}
+            style={activeTheme.overlayStyle}
           />
 
-          <div className="relative space-y-3 font-mono text-[0.94rem] leading-5 text-zinc-100">
+          <div className={activeTheme.contentClassName}>
             {activeTab.entries.map((entry) => {
               if (entry.type === "command") {
                 return (
@@ -620,7 +993,7 @@ export function TerminalWindow() {
                     key={entry.id}
                     className="flex items-start gap-3 break-all"
                   >
-                    <TerminalPrompt />
+                    <TerminalPrompt theme={activeTheme} />
                     <span>{entry.command}</span>
                   </div>
                 );
@@ -634,14 +1007,14 @@ export function TerminalWindow() {
                       className="whitespace-pre-wrap break-words"
                     >
                       {line.map((part, partIndex) => {
-                        const className = toneClass(part.tone);
+                        const className = toneClass(activeTheme, part.tone);
 
                         if (part.href) {
                           return (
                             <a
                               key={`${entry.id}-${lineIndex}-${partIndex}`}
                               href={part.href}
-                              className={`${className} underline decoration-white/20 underline-offset-4 transition hover:text-white`}
+                              className={`${className} ${activeTheme.linkClassName}`}
                               target={
                                 part.href.startsWith("http")
                                   ? "_blank"
@@ -674,21 +1047,12 @@ export function TerminalWindow() {
             })}
 
             <div className="flex items-start gap-3 break-all">
-              <TerminalPrompt />
+              <TerminalPrompt theme={activeTheme} />
               <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
                 {activeTab.input.slice(0, activeTab.cursorIndex)}
                 <span
                   className="inline-block w-[1ch] rounded-[2px] align-baseline text-left [animation:terminal-cursor-classic_1.05s_steps(1)_infinite]"
-                  style={
-                    {
-                      lineHeight: "inherit",
-                      boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.96)",
-                      backgroundColor: "rgba(255, 255, 255, 0.96)",
-                      color: "inherit",
-                      ["--terminal-cursor-rest-color" as string]:
-                        "currentColor",
-                    } as React.CSSProperties
-                  }
+                  style={activeTheme.cursorStyle}
                 >
                   {cursorGlyph}
                 </span>

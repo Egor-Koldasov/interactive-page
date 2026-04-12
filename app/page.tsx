@@ -33,7 +33,7 @@ export default function Home() {
 
       <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl items-center justify-center px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <section className="flex h-full min-h-[32rem] w-full flex-col items-center gap-4 sm:gap-6">
-          <h1 className="text-center text-[clamp(3.75rem,11vw,6.2rem)] leading-none font-medium tracking-[-0.06em] text-stone-100">
+          <h1 className="text-center text-[clamp(3.75rem,11vw,6.2rem)] leading-none font-medium text-stone-100 tracking-wider">
             Egor Koldasov
           </h1>
 

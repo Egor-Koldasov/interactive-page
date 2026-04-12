@@ -9,6 +9,14 @@
   --muted: #99a4b6;
   --accent: #7cf3c6;
   --accent-warm: #ffd36b;
+  --terminal-shell: #8d7350;
+  --terminal-shell-dark: #5a432b;
+  --terminal-shell-light: #dfcca6;
+  --terminal-screen: #061109;
+  --terminal-phosphor: #c6ffc0;
+  --terminal-phosphor-dim: #78966e;
+  --terminal-phosphor-amber: #f6c66b;
+  --terminal-phosphor-error: #ff9a75;
 }
 
 @theme inline {
@@ -57,8 +65,8 @@ input {
 @keyframes terminal-cursor-classic {
   0%,
   45% {
-    background-color: rgba(255, 255, 255, 0.96);
-    color: #03050a;
+    background-color: var(--terminal-cursor-active-bg, #c6ffc0);
+    color: var(--terminal-cursor-active-color, #071108);
   }
 
   46%,
@@ -66,4 +74,177 @@ input {
     background-color: transparent;
     color: var(--terminal-cursor-rest-color);
   }
+}
+
+@keyframes terminal-flicker {
+  0%,
+  100% {
+    opacity: 0.98;
+  }
+
+  7% {
+    opacity: 0.94;
+  }
+
+  8% {
+    opacity: 1;
+  }
+
+  56% {
+    opacity: 0.97;
+  }
+
+  57% {
+    opacity: 0.93;
+  }
+}
+
+@keyframes terminal-scan-drift {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      0 8px,
+      0 0;
+  }
+}
+
+@keyframes terminal-led-pulse {
+  0%,
+  100% {
+    opacity: 0.88;
+    box-shadow:
+      0 0 0 1px rgba(13, 25, 15, 0.35),
+      0 0 10px rgba(120, 255, 122, 0.5);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 1px rgba(13, 25, 15, 0.35),
+      0 0 18px rgba(120, 255, 122, 0.8);
+  }
+}
+
+.retro-terminal-shell {
+  position: relative;
+  border-radius: 1.85rem;
+  padding: 0.6rem;
+  background: linear-gradient(
+    180deg,
+    var(--terminal-shell-light) 0%,
+    #b79b70 18%,
+    var(--terminal-shell) 52%,
+    var(--terminal-shell-dark) 100%
+  );
+  box-shadow:
+    0 28px 100px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -10px 24px rgba(32, 19, 5, 0.45);
+}
+
+.retro-terminal-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0.38rem;
+  border-radius: 1.45rem;
+  border: 1px solid rgba(255, 248, 224, 0.18);
+  pointer-events: none;
+}
+
+.retro-terminal-header {
+  border-radius: 1.2rem 1.2rem 0.95rem 0.95rem;
+  border: 1px solid rgba(81, 58, 25, 0.7);
+  background: linear-gradient(
+    180deg,
+    rgba(225, 209, 176, 0.96) 0%,
+    rgba(166, 140, 95, 0.94) 42%,
+    rgba(112, 87, 57, 0.98) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -6px 12px rgba(41, 24, 8, 0.26);
+}
+
+.retro-terminal-screen {
+  position: relative;
+  border-radius: 1.15rem 1.15rem 1.55rem 1.55rem;
+  border: 1px solid rgba(208, 255, 196, 0.12);
+  background:
+    radial-gradient(
+      circle at 50% 18%,
+      rgba(118, 255, 120, 0.12),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 50% 48%,
+      rgba(17, 66, 23, 0.28),
+      transparent 74%
+    ),
+    linear-gradient(180deg, rgba(7, 20, 8, 0.98), rgba(4, 11, 5, 0.99));
+  box-shadow:
+    inset 0 0 0 1px rgba(219, 255, 213, 0.04),
+    inset 0 0 56px rgba(0, 0, 0, 0.72),
+    inset 0 0 140px rgba(28, 110, 28, 0.16);
+  overflow: hidden;
+}
+
+.retro-terminal-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(189, 255, 181, 0.07) 0%,
+      rgba(189, 255, 181, 0.02) 48%,
+      rgba(0, 0, 0, 0.16) 52%,
+      rgba(0, 0, 0, 0.22) 100%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(122, 255, 122, 0.035),
+      rgba(255, 207, 112, 0.018),
+      rgba(122, 255, 122, 0.035)
+    );
+  background-size:
+    100% 4px,
+    4px 100%;
+  opacity: 0.42;
+  mix-blend-mode: screen;
+  animation: terminal-scan-drift 12s linear infinite;
+  pointer-events: none;
+}
+
+.retro-terminal-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 52%,
+      rgba(0, 0, 0, 0.28) 76%,
+      rgba(0, 0, 0, 0.54) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0) 18%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+  pointer-events: none;
+}
+
+.retro-terminal-text {
+  position: relative;
+  z-index: 1;
+  color: var(--terminal-phosphor);
+  text-shadow: 0 0 7px rgba(123, 255, 126, 0.16);
+  animation: terminal-flicker 8.8s linear infinite;
 }
