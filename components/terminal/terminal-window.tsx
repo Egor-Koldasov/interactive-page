@@ -16,13 +16,7 @@ import {
 import type { BackgroundKind } from "@/lib/backgrounds/types";
 import { terminalThemePreferenceStore } from "@/lib/terminal/theme-preference-store";
 
-type LineTone =
-  | "default"
-  | "muted"
-  | "accent"
-  | "success"
-  | "error"
-  | "link";
+type LineTone = "default" | "muted" | "accent" | "success" | "error" | "link";
 
 type LineSegment = {
   text: string;
@@ -50,6 +44,7 @@ type TerminalTab = {
   entries: TerminalEntry[];
   input: string;
   cursorIndex: number;
+  autocompleteSuggestions: string[];
   history: string[];
   historyIndex: number | null;
 };
@@ -234,6 +229,36 @@ const commandCatalog = {
 const commandNames = Object.keys(commandCatalog) as Array<
   keyof typeof commandCatalog
 >;
+const resumeSubcommandNames = [
+  "help",
+  "overview",
+  "list",
+  "read",
+  "download",
+] as const;
+const themeSubcommandNames = [
+  "help",
+  "list",
+  "current",
+  "next",
+  "set",
+] as const;
+const backgroundSubcommandNames = [
+  "help",
+  "list",
+  "current",
+  "next",
+  "set",
+] as const;
+const resumeAutocompleteNames = Array.from(
+  new Set(
+    resumeCompanies.flatMap((company) => [
+      company.id,
+      ...company.aliases.filter((alias) => !/\s/.test(alias)),
+    ]),
+  ),
+);
+const backgroundAutocompleteNames = backgroundKinds;
 const promptParts = {
   user: "guest",
   host: "egorkolds_page",
@@ -281,6 +306,7 @@ function createTab(number: number): TerminalTab {
     entries: [],
     input: "",
     cursorIndex: 0,
+    autocompleteSuggestions: [],
     history: [],
     historyIndex: null,
   };
@@ -299,7 +325,10 @@ function helpLines(): TerminalLine[] {
     ],
     [
       segment("  resume", "success"),
-      segment("     Explore resume overview, list, read, and download.", "muted"),
+      segment(
+        "     Explore resume overview, list, read, and download.",
+        "muted",
+      ),
     ],
     [
       segment("  theme", "success"),
@@ -344,10 +373,7 @@ function contactLines(): TerminalLine[] {
 function resumeHelpLines(): TerminalLine[] {
   return [
     [segment("Resume commands", "accent")],
-    [
-      segment("  Usage", "muted"),
-      segment(": resume <command>", "default"),
-    ],
+    [segment("  Usage", "muted"), segment(": resume <command>", "default")],
     [
       segment("  resume overview", "success"),
       segment(" Show a summary of experience and current focus.", "muted"),
@@ -368,10 +394,7 @@ function resumeHelpLines(): TerminalLine[] {
       segment("  resume help", "success"),
       segment("     Show resume usage and examples.", "muted"),
     ],
-    [
-      segment("Example: ", "muted"),
-      segment("resume read iorad", "success"),
-    ],
+    [segment("Example: ", "muted"), segment("resume read iorad", "success")],
   ];
 }
 
@@ -394,11 +417,7 @@ function resumeOverviewLines(): TerminalLine[] {
     [
       segment("  Email", "muted"),
       segment(": ", "muted"),
-      segment(
-        resumeProfile.email,
-        "success",
-        `mailto:${resumeProfile.email}`,
-      ),
+      segment(resumeProfile.email, "success", `mailto:${resumeProfile.email}`),
     ],
     [
       segment("  LinkedIn", "muted"),
@@ -857,9 +876,7 @@ function backgroundCurrentLines(
   ];
 }
 
-function backgroundChangedLines(
-  backgroundId: BackgroundKind,
-): TerminalLine[] {
+function backgroundChangedLines(backgroundId: BackgroundKind): TerminalLine[] {
   return [
     [
       segment("Background changed to ", "muted"),
@@ -1029,6 +1046,7 @@ function submitInput(
         entries: nextEntries,
         input: "",
         cursorIndex: 0,
+        autocompleteSuggestions: [],
         historyIndex: null,
       },
     };
@@ -1046,6 +1064,7 @@ function submitInput(
       entries: [...nextEntries, ...commandResult.entries],
       input: "",
       cursorIndex: 0,
+      autocompleteSuggestions: [],
       history: [...tab.history, trimmedCommand],
       historyIndex: null,
     },
@@ -1056,39 +1075,42 @@ function submitInput(
 }
 
 function autocomplete(tab: TerminalTab): TerminalTab {
-  const candidate = tab.input.trim().toLowerCase();
-  if (!candidate) {
+  if (!tab.input.trim()) {
     return tab;
   }
 
-  const matches = commandNames.filter((command) =>
-    command.startsWith(candidate),
-  );
+  const context = getAutocompleteContext(tab.input, tab.cursorIndex);
+  const candidate = context.currentToken.toLowerCase();
+  const matches = Array.from(
+    new Set(getAutocompleteCandidates(context)),
+  ).filter((completion) => completion.toLowerCase().startsWith(candidate));
+
   if (matches.length === 1) {
-    return {
-      ...tab,
-      input: matches[0],
-      cursorIndex: matches[0].length,
-      historyIndex: null,
-    };
+    const completedToken = matches[0]!;
+    const replacement =
+      context.replaceEnd === tab.input.length
+        ? `${completedToken} `
+        : completedToken;
+
+    return replaceInputRange(
+      tab,
+      context.replaceStart,
+      context.replaceEnd,
+      replacement,
+    );
   }
 
   if (matches.length > 1) {
     return {
       ...tab,
-      entries: [
-        ...tab.entries,
-        output([
-          [
-            segment("Suggestions: ", "muted"),
-            segment(matches.join(", "), "accent"),
-          ],
-        ]),
-      ],
+      autocompleteSuggestions: matches,
     };
   }
 
-  return tab;
+  return {
+    ...tab,
+    autocompleteSuggestions: [],
+  };
 }
 
 function cycleHistory(tab: TerminalTab, direction: "up" | "down"): TerminalTab {
@@ -1107,6 +1129,7 @@ function cycleHistory(tab: TerminalTab, direction: "up" | "down"): TerminalTab {
       ...tab,
       input: "",
       cursorIndex: 0,
+      autocompleteSuggestions: [],
       historyIndex: null,
     };
   }
@@ -1116,6 +1139,7 @@ function cycleHistory(tab: TerminalTab, direction: "up" | "down"): TerminalTab {
     ...tab,
     input: nextInput,
     cursorIndex: nextInput.length,
+    autocompleteSuggestions: [],
     historyIndex: nextIndex,
   };
 }
@@ -1134,13 +1158,120 @@ function insertTextAtCursor(tab: TerminalTab, text: string): TerminalTab {
     ...tab,
     input: nextInput,
     cursorIndex: nextCursorIndex,
+    autocompleteSuggestions: [],
     historyIndex: null,
   };
+}
+
+function replaceInputRange(
+  tab: TerminalTab,
+  start: number,
+  end: number,
+  text: string,
+): TerminalTab {
+  const before = tab.input.slice(0, start);
+  const after = tab.input.slice(end);
+
+  return {
+    ...tab,
+    input: `${before}${text}${after}`,
+    cursorIndex: before.length + text.length,
+    autocompleteSuggestions: [],
+    historyIndex: null,
+  };
+}
+
+type AutocompleteContext = {
+  currentToken: string;
+  replaceStart: number;
+  replaceEnd: number;
+  tokenIndex: number;
+  tokensBeforeCurrent: string[];
+};
+
+function getAutocompleteContext(
+  input: string,
+  cursorIndex: number,
+): AutocompleteContext {
+  let replaceStart = cursorIndex;
+  while (replaceStart > 0 && !/\s/.test(input[replaceStart - 1]!)) {
+    replaceStart -= 1;
+  }
+
+  let replaceEnd = cursorIndex;
+  while (replaceEnd < input.length && !/\s/.test(input[replaceEnd]!)) {
+    replaceEnd += 1;
+  }
+
+  const currentToken = input.slice(replaceStart, replaceEnd);
+  const tokensBeforeCurrent = input
+    .slice(0, replaceStart)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return {
+    currentToken,
+    replaceStart,
+    replaceEnd,
+    tokenIndex: tokensBeforeCurrent.length,
+    tokensBeforeCurrent,
+  };
+}
+
+function getAutocompleteCandidates(
+  context: AutocompleteContext,
+): readonly string[] {
+  if (context.tokenIndex === 0) {
+    return commandNames;
+  }
+
+  const command = context.tokensBeforeCurrent[0]?.toLowerCase();
+  const subcommand = context.tokensBeforeCurrent[1]?.toLowerCase();
+
+  if (command === "resume") {
+    if (context.tokenIndex === 1) {
+      return resumeSubcommandNames;
+    }
+
+    if (subcommand === "read" && context.tokenIndex === 2) {
+      return resumeAutocompleteNames;
+    }
+
+    return [];
+  }
+
+  if (command === "theme") {
+    if (context.tokenIndex === 1) {
+      return themeSubcommandNames;
+    }
+
+    if (subcommand === "set" && context.tokenIndex === 2) {
+      return terminalThemeOrder;
+    }
+
+    return [];
+  }
+
+  if (command === "background") {
+    if (context.tokenIndex === 1) {
+      return backgroundSubcommandNames;
+    }
+
+    if (subcommand === "set" && context.tokenIndex === 2) {
+      return backgroundAutocompleteNames;
+    }
+
+    return [];
+  }
+
+  return [];
 }
 
 function moveCursor(tab: TerminalTab, delta: number): TerminalTab {
   return {
     ...tab,
+    autocompleteSuggestions: [],
     cursorIndex: Math.max(
       0,
       Math.min(tab.input.length, tab.cursorIndex + delta),
@@ -1154,6 +1285,7 @@ function moveCursorToEdge(
 ): TerminalTab {
   return {
     ...tab,
+    autocompleteSuggestions: [],
     cursorIndex: edge === "start" ? 0 : tab.input.length,
   };
 }
@@ -1170,6 +1302,7 @@ function deleteBackward(tab: TerminalTab): TerminalTab {
     ...tab,
     input: `${before}${after}`,
     cursorIndex: tab.cursorIndex - 1,
+    autocompleteSuggestions: [],
     historyIndex: null,
   };
 }
@@ -1185,6 +1318,7 @@ function deleteForward(tab: TerminalTab): TerminalTab {
   return {
     ...tab,
     input: `${before}${after}`,
+    autocompleteSuggestions: [],
     historyIndex: null,
   };
 }
@@ -1200,6 +1334,14 @@ function TerminalPrompt({ theme }: { theme: TerminalTheme }) {
       <span className={theme.promptToneClasses.separator}>@</span>
       <span className={theme.promptToneClasses.host}>{promptParts.host}</span>
       <span className={theme.promptToneClasses.path}>:{promptParts.path}</span>
+    </span>
+  );
+}
+
+function TerminalPromptSpacer({ theme }: { theme: TerminalTheme }) {
+  return (
+    <span aria-hidden="true" className="shrink-0 whitespace-nowrap invisible">
+      <TerminalPrompt theme={theme} />
     </span>
   );
 }
@@ -1282,7 +1424,12 @@ export function TerminalWindow({
     }
 
     panel.scrollTop = panel.scrollHeight;
-  }, [activeTab.entries, activeTabId, activeTab.input]);
+  }, [
+    activeTab.autocompleteSuggestions,
+    activeTab.entries,
+    activeTabId,
+    activeTab.input,
+  ]);
 
   function focusTerminal() {
     terminalRef.current?.focus();
@@ -1359,11 +1506,7 @@ export function TerminalWindow({
     if (event.key === "Enter") {
       event.preventDefault();
       const { nextTab, nextThemeId, nextBackgroundId, nextDownloadUrl } =
-        submitInput(
-          activeTab,
-          themeId,
-          currentBackgroundId,
-        );
+        submitInput(activeTab, themeId, currentBackgroundId);
 
       setTerminalState((currentState) => ({
         ...currentState,
@@ -1444,6 +1587,7 @@ export function TerminalWindow({
         ...tab,
         input: "",
         cursorIndex: 0,
+        autocompleteSuggestions: [],
         historyIndex: null,
       }));
       return;
@@ -1613,21 +1757,34 @@ export function TerminalWindow({
               );
             })}
 
-            <div className="flex items-start gap-3 break-all">
-              <TerminalPrompt theme={activeTheme} />
-              <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
-                {activeTab.input.slice(0, activeTab.cursorIndex)}
-                <span
-                  className="inline-block w-[1ch] rounded-[2px] align-baseline text-left [animation:terminal-cursor-classic_1.05s_steps(1)_infinite]"
-                  style={activeTheme.cursorStyle}
-                >
-                  {cursorGlyph}
+            <div className="space-y-1">
+              <div className="flex items-start gap-3 break-all">
+                <TerminalPrompt theme={activeTheme} />
+                <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                  {activeTab.input.slice(0, activeTab.cursorIndex)}
+                  <span
+                    className="inline-block w-[1ch] rounded-[2px] align-baseline text-left [animation:terminal-cursor-classic_1.05s_steps(1)_infinite]"
+                    style={activeTheme.cursorStyle}
+                  >
+                    {cursorGlyph}
+                  </span>
+                  {activeTab.input.slice(
+                    activeTab.cursorIndex +
+                      (activeTab.cursorIndex < activeTab.input.length ? 1 : 0),
+                  )}
                 </span>
-                {activeTab.input.slice(
-                  activeTab.cursorIndex +
-                    (activeTab.cursorIndex < activeTab.input.length ? 1 : 0),
-                )}
-              </span>
+              </div>
+
+              {activeTab.autocompleteSuggestions.length > 0 ? (
+                <div className="flex items-start gap-3">
+                  <TerminalPromptSpacer theme={activeTheme} />
+                  <div className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                    <span className={toneClass(activeTheme, "accent")}>
+                      {activeTab.autocompleteSuggestions.join(", ")}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
