@@ -35,4 +35,4 @@ jobs:
             git pull
             npm install
             npm run build
-            pm2 start npm --name "my-web-page" -- start -- --port 4400 # Replace with your PM2 service name
+            pm2 restart "my-web-page"
