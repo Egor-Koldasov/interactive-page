@@ -2,10 +2,10 @@
   <rect width="256" height="256" rx="48" fill="#061109" />
   <text
     x="50%"
-    y="54%"
-    fill="#c6ffc0"
+    y="50%"
+    fill="#d5d5d5"
     font-family="IBM Plex Mono, Menlo, Monaco, Consolas, monospace"
-    font-size="184"
+    font-size="254"
     font-weight="700"
     text-anchor="middle"
     dominant-baseline="middle"
