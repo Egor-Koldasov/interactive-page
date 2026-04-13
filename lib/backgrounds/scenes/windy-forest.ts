@@ -265,7 +265,7 @@ export function createWindyForestBackground(
   overlay.style.pointerEvents = "none";
   overlay.style.color = "#dff6f4";
   overlay.style.textShadow = "0 0 10px rgba(11, 14, 28, 0.35)";
-  overlay.style.filter = "brightness(0.5)";
+  overlay.style.filter = "brightness(0.2)";
   overlay.style.background = [
     "radial-gradient(circle at 20% 15%, rgba(255, 183, 77, 0.16), transparent 30%)",
     "radial-gradient(circle at 80% 22%, rgba(120, 221, 196, 0.18), transparent 28%)",

@@ -87,7 +87,7 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
     name: "modern",
     description: "A sleek glass terminal with cool neon accents.",
     shellClassName:
-      "overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,11,20,0.72)] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-xs focus-visible:border-white/18",
+      "overflow-hidden rounded-2xl border border-white/10 bg-[#09090a9c] shadow-[0_28px_120px_rgba(0,0,0,0.52)] backdrop-blur-xs focus-visible:border-white/18",
     headerClassName: "border-b border-white/8",
     screenClassName: "relative flex min-h-0 flex-1 flex-col",
     overlayClassName: "pointer-events-none absolute inset-0 opacity-20",
@@ -265,13 +265,10 @@ function helpLines(): TerminalLine[] {
       segment("  theme", "success"),
       segment("     List and switch terminal looks.", "muted"),
     ],
-    [
-      segment("Tips:", "accent"),
-      segment(
-        " Tab autocompletes, Arrow Up/Down walks history, theme list shows presets.",
-        "muted",
-      ),
-    ],
+    // [
+    //   segment("Tips:", "accent"),
+    //   segment(" Tab autocompletes, Arrow Up/Down walks history.", "muted"),
+    // ],
   ];
 }
 
