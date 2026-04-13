@@ -110,6 +110,7 @@ type CommandResult = {
   nextBackgroundId?: BackgroundKind;
   downloadUrl?: string;
   nextPongGame?: PongGameState;
+  clearTerminal?: boolean;
 };
 
 const terminalThemeOrder: TerminalThemeId[] = ["modern", "retro"];
@@ -237,6 +238,7 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
 
 const commandCatalog = {
   help: "Show available commands and usage tips.",
+  clear: "Clear the terminal screen.",
   contacts: "Print email, GitHub, and Telegram contact details.",
   resume: "Explore the current resume and download the PDF.",
   pong: "Play a terminal ping-pong match against the bot.",
@@ -338,6 +340,10 @@ function helpLines(): TerminalLine[] {
     [
       segment("  help", "success"),
       segment("       Show available commands and shortcuts.", "muted"),
+    ],
+    [
+      segment("  clear", "success"),
+      segment("      Clear the terminal screen.", "muted"),
     ],
     [
       segment("  contacts", "success"),
@@ -1081,6 +1087,10 @@ function runCommand(
     return { entries: [output(helpLines())] };
   }
 
+  if (normalizedCommand === "clear") {
+    return { entries: [], clearTerminal: true };
+  }
+
   if (normalizedCommand === "contacts") {
     return { entries: [output(contactLines())] };
   }
@@ -1151,11 +1161,14 @@ function submitInput(
     currentThemeId,
     currentBackgroundId,
   );
+  const nextVisibleEntries = commandResult.clearTerminal
+    ? []
+    : [...nextEntries, ...commandResult.entries];
 
   return {
     nextTab: {
       ...tab,
-      entries: [...nextEntries, ...commandResult.entries],
+      entries: nextVisibleEntries,
       input: "",
       cursorIndex: 0,
       autocompleteSuggestions: [],
