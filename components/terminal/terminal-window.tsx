@@ -5,10 +5,24 @@ import {
   backgroundRegistry,
   natureBackgroundKinds,
 } from "@/lib/backgrounds/registry";
+import {
+  findResumeCompany,
+  resumeCompanies,
+  resumeCompanyNames,
+  resumeDownloadUrl,
+  resumeProfile,
+  type ResumeCompany,
+} from "@/lib/resume/resume-data";
 import type { BackgroundKind } from "@/lib/backgrounds/types";
 import { terminalThemePreferenceStore } from "@/lib/terminal/theme-preference-store";
 
-type LineTone = "default" | "muted" | "accent" | "success" | "error";
+type LineTone =
+  | "default"
+  | "muted"
+  | "accent"
+  | "success"
+  | "error"
+  | "link";
 
 type LineSegment = {
   text: string;
@@ -83,6 +97,7 @@ type CommandResult = {
   entries: TerminalEntry[];
   nextThemeId?: TerminalThemeId;
   nextBackgroundId?: BackgroundKind;
+  downloadUrl?: string;
 };
 
 const terminalThemeOrder: TerminalThemeId[] = ["modern", "retro"];
@@ -118,6 +133,7 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
       accent: "text-amber-100",
       success: "text-emerald-300",
       error: "text-rose-300",
+      link: "text-white",
     },
     tabActiveClassName:
       "group flex items-center h-full gap-1.5 bg-white/4 px-8 py-1.5 text-sm text-white transition" +
@@ -178,6 +194,7 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
       accent: "text-[#f6c66b] [text-shadow:0_0_9px_rgba(246,198,107,0.28)]",
       success: "text-[#a4ff9f] [text-shadow:0_0_10px_rgba(126,255,127,0.34)]",
       error: "text-[#ff9a75] [text-shadow:0_0_10px_rgba(255,154,117,0.2)]",
+      link: "text-white",
     },
     tabActiveClassName:
       "group flex items-center h-full gap-1.5 bg-white/4 px-8 py-1.5 text-sm text-white transition" +
@@ -209,6 +226,7 @@ const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
 const commandCatalog = {
   help: "Show available commands and usage tips.",
   contacts: "Print email, GitHub, and Telegram contact details.",
+  resume: "Explore the current resume and download the PDF.",
   theme: "List and switch terminal themes.",
   background: "List and switch ASCII backgrounds.",
 } as const;
@@ -245,6 +263,17 @@ function output(lines: TerminalLine[]): TerminalEntry {
   };
 }
 
+function triggerDownload(url: string) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noreferrer noopener";
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 function createTab(number: number): TerminalTab {
   return {
     id: createId("tab"),
@@ -267,6 +296,10 @@ function helpLines(): TerminalLine[] {
     [
       segment("  contacts", "success"),
       segment("   Print author's contact details.", "muted"),
+    ],
+    [
+      segment("  resume", "success"),
+      segment("     Explore resume overview, list, read, and download.", "muted"),
     ],
     [
       segment("  theme", "success"),
@@ -306,6 +339,277 @@ function contactLines(): TerminalLine[] {
       segment("@egorkolds", "success", "https://t.me/egorkolds"),
     ],
   ];
+}
+
+function resumeHelpLines(): TerminalLine[] {
+  return [
+    [segment("Resume commands", "accent")],
+    [
+      segment("  Usage", "muted"),
+      segment(": resume <command>", "default"),
+    ],
+    [
+      segment("  resume overview", "success"),
+      segment(" Show a summary of experience and current focus.", "muted"),
+    ],
+    [
+      segment("  resume list", "success"),
+      segment("     List companies, role, and working periods.", "muted"),
+    ],
+    [
+      segment("  resume read <company>", "success"),
+      segment(" Show the full experience for one company.", "muted"),
+    ],
+    [
+      segment("  resume download", "success"),
+      segment(" Open the resume PDF.", "muted"),
+    ],
+    [
+      segment("Example: ", "muted"),
+      segment("resume read iorad", "success"),
+    ],
+  ];
+}
+
+function resumeOverviewLines(): TerminalLine[] {
+  return [
+    [segment(resumeProfile.name, "accent")],
+    [
+      segment(`  ${resumeProfile.title}`, "success"),
+      segment(`  ${resumeProfile.focus.join(" | ")}`, "muted"),
+    ],
+    [
+      segment("  Website", "muted"),
+      segment(": ", "muted"),
+      segment(
+        resumeProfile.website,
+        "success",
+        `https://${resumeProfile.website}`,
+      ),
+    ],
+    [
+      segment("  Email", "muted"),
+      segment(": ", "muted"),
+      segment(
+        resumeProfile.email,
+        "success",
+        `mailto:${resumeProfile.email}`,
+      ),
+    ],
+    [
+      segment("  LinkedIn", "muted"),
+      segment(": ", "muted"),
+      segment(
+        resumeProfile.linkedIn,
+        "success",
+        `https://${resumeProfile.linkedIn}`,
+      ),
+    ],
+    [
+      segment("  GitHub", "muted"),
+      segment(": ", "muted"),
+      segment(
+        resumeProfile.github,
+        "success",
+        `https://${resumeProfile.github}`,
+      ),
+    ],
+    ...resumeProfile.summary.map((line) => [segment(line, "default")]),
+    [segment("Experience snapshot", "accent")],
+    [
+      segment("  Companies", "muted"),
+      segment(`: ${resumeCompanies.length}`, "success"),
+      segment(" product teams and startups.", "muted"),
+    ],
+    [
+      segment("  Ownership", "muted"),
+      segment(
+        ": end-to-end feature delivery with planning and process support.",
+        "default",
+      ),
+    ],
+    [
+      segment("  Recent focus", "muted"),
+      segment(`: ${resumeProfile.recentFocus}`, "default"),
+    ],
+    [
+      segment("Next steps: ", "muted"),
+      segment("resume list", "accent"),
+      segment(", ", "muted"),
+      segment("resume read iorad", "accent"),
+      segment(", ", "muted"),
+      segment("resume download", "accent"),
+    ],
+  ];
+}
+
+function companyRoleLabel(company: ResumeCompany) {
+  return Array.from(
+    new Set(company.experiences.map((experience) => experience.role)),
+  ).join(", ");
+}
+
+function companyPeriodsLabel(company: ResumeCompany) {
+  return company.experiences.map((experience) => experience.period).join("; ");
+}
+
+function resumeListLines(): TerminalLine[] {
+  return [
+    [segment("Resume companies", "accent")],
+    ...resumeCompanies.flatMap((company, companyIndex) => {
+      const lines: TerminalLine[] = [
+        [segment(`  ${company.name}`, "success")],
+        [
+          segment("    Company", "muted"),
+          segment(`: ${company.description}`, "default"),
+        ],
+        [
+          segment("    Role", "muted"),
+          segment(`: ${companyRoleLabel(company)}`, "default"),
+        ],
+        [
+          segment("    Period", "muted"),
+          segment(`: ${companyPeriodsLabel(company)}`, "accent"),
+        ],
+        [
+          segment("    Read", "muted"),
+          segment(`: resume read ${company.id}`, "success"),
+        ],
+      ];
+
+      if (companyIndex < resumeCompanies.length - 1) {
+        lines.push([segment("")]);
+      }
+
+      return lines;
+    }),
+  ];
+}
+
+function resumeReadLines(company: ResumeCompany): TerminalLine[] {
+  return [
+    [segment(company.name, "accent")],
+    [segment(company.description, "muted")],
+    ...(company.websiteLabel && company.websiteHref
+      ? [
+          [
+            segment("Website", "muted"),
+            segment(": ", "muted"),
+            segment(company.websiteLabel, "success", company.websiteHref),
+          ],
+        ]
+      : []),
+    [segment("")],
+    ...company.experiences.flatMap((experience, index) => {
+      const lines: TerminalLine[] = [
+        [
+          segment(experience.role, "success"),
+          segment("  ", "muted"),
+          segment(experience.period, "accent"),
+        ],
+        [segment(experience.location, "muted")],
+        ...experience.details.map((detail) => [segment(detail, "default")]),
+        [
+          segment("Tech Stack", "muted"),
+          segment(`: ${experience.techStack.join(", ")}`, "success"),
+        ],
+      ];
+
+      if (index < company.experiences.length - 1) {
+        lines.push([segment("")]);
+      }
+
+      return lines;
+    }),
+  ];
+}
+
+function resumeDownloadLines(): TerminalLine[] {
+  return [
+    [
+      segment("Resume PDF: ", "muted"),
+      segment(resumeDownloadUrl, "link", resumeDownloadUrl),
+    ],
+  ];
+}
+
+function runResumeCommand(args: string[]): CommandResult {
+  if (args.length === 0) {
+    return {
+      entries: [
+        output([
+          [segment("Usage: resume <command>", "error")],
+          ...resumeHelpLines(),
+        ]),
+      ],
+    };
+  }
+
+  const subcommand = args[0]?.toLowerCase();
+
+  if (subcommand === "help") {
+    return { entries: [output(resumeHelpLines())] };
+  }
+
+  if (subcommand === "overview") {
+    return { entries: [output(resumeOverviewLines())] };
+  }
+
+  if (subcommand === "list") {
+    return { entries: [output(resumeListLines())] };
+  }
+
+  if (subcommand === "download") {
+    return {
+      entries: [output(resumeDownloadLines())],
+      downloadUrl: resumeDownloadUrl,
+    };
+  }
+
+  if (subcommand === "read") {
+    const requestedCompany = args.slice(1).join(" ");
+
+    if (!requestedCompany) {
+      return {
+        entries: [
+          output([
+            [segment("Usage: resume read <company>", "error")],
+            [
+              segment("Available companies: ", "muted"),
+              segment(resumeCompanyNames.join(", "), "accent"),
+            ],
+          ]),
+        ],
+      };
+    }
+
+    const company = findResumeCompany(requestedCompany);
+
+    if (!company) {
+      return {
+        entries: [
+          output([
+            [segment(`Unknown company: ${requestedCompany}`, "error")],
+            [
+              segment("Available companies: ", "muted"),
+              segment(resumeCompanyNames.join(", "), "accent"),
+            ],
+          ]),
+        ],
+      };
+    }
+
+    return { entries: [output(resumeReadLines(company))] };
+  }
+
+  return {
+    entries: [
+      output([
+        [segment(`Unknown resume command: ${subcommand}`, "error")],
+        ...resumeHelpLines(),
+      ]),
+    ],
+  };
 }
 
 function isTerminalThemeId(value: string): value is TerminalThemeId {
@@ -619,6 +923,10 @@ function runCommand(
     return { entries: [output(contactLines())] };
   }
 
+  if (normalizedCommand === "resume") {
+    return runResumeCommand(args);
+  }
+
   if (normalizedCommand === "theme") {
     return runThemeCommand(args, currentThemeId);
   }
@@ -645,6 +953,7 @@ function submitInput(
   nextTab: TerminalTab;
   nextThemeId?: TerminalThemeId;
   nextBackgroundId?: BackgroundKind;
+  nextDownloadUrl?: string;
 } {
   const rawCommand = tab.input;
   const trimmedCommand = rawCommand.trim();
@@ -686,6 +995,7 @@ function submitInput(
     },
     nextThemeId: commandResult.nextThemeId,
     nextBackgroundId: commandResult.nextBackgroundId,
+    nextDownloadUrl: commandResult.downloadUrl,
   };
 }
 
@@ -992,11 +1302,12 @@ export function TerminalWindow({
 
     if (event.key === "Enter") {
       event.preventDefault();
-      const { nextTab, nextThemeId, nextBackgroundId } = submitInput(
-        activeTab,
-        themeId,
-        currentBackgroundId,
-      );
+      const { nextTab, nextThemeId, nextBackgroundId, nextDownloadUrl } =
+        submitInput(
+          activeTab,
+          themeId,
+          currentBackgroundId,
+        );
 
       setTerminalState((currentState) => ({
         ...currentState,
@@ -1008,6 +1319,10 @@ export function TerminalWindow({
 
       if (nextBackgroundId && nextBackgroundId !== currentBackgroundId) {
         onBackgroundChange(nextBackgroundId);
+      }
+
+      if (nextDownloadUrl) {
+        triggerDownload(nextDownloadUrl);
       }
 
       return;
