@@ -9,6 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: deploy
 
     steps:
       - name: Checkout code
@@ -34,4 +35,4 @@ jobs:
             git pull
             npm install
             npm run build
-            pm2 restart {service_name} # Replace with your PM2 service name
+            pm2 start npm --name "my-web-page" -- start -- --port 4400 # Replace with your PM2 service name
