@@ -25,6 +25,8 @@ export type WindyForestBackgroundOptions = AsciiBackgroundOptions;
 export type MoonlitTideBackgroundOptions = AsciiBackgroundOptions;
 export type DesertDunesBackgroundOptions = AsciiBackgroundOptions;
 export type AuroraPeaksBackgroundOptions = AsciiBackgroundOptions;
+export type SpaceBackgroundOptions = AsciiBackgroundOptions;
+export type FireBackgroundOptions = AsciiBackgroundOptions;
 export type UrbanBackgroundOptions = AsciiBackgroundOptions;
 
 export interface BackgroundOptionsMap {
@@ -32,6 +34,8 @@ export interface BackgroundOptionsMap {
   "moonlit-tide": MoonlitTideBackgroundOptions;
   "desert-dunes": DesertDunesBackgroundOptions;
   "aurora-peaks": AuroraPeaksBackgroundOptions;
+  space: SpaceBackgroundOptions;
+  fire: FireBackgroundOptions;
   urban: UrbanBackgroundOptions;
 }
 

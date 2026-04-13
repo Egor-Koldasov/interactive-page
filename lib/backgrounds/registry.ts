@@ -1,6 +1,8 @@
 import { createAuroraPeaksBackground } from "@/lib/backgrounds/scenes/aurora-peaks";
 import { createDesertDunesBackground } from "@/lib/backgrounds/scenes/desert-dunes";
+import { createFireBackground } from "@/lib/backgrounds/scenes/fire";
 import { createMoonlitTideBackground } from "@/lib/backgrounds/scenes/moonlit-tide";
+import { createSpaceBackground } from "@/lib/backgrounds/scenes/space";
 import { createUrbanBackground } from "@/lib/backgrounds/scenes/urban";
 import { createWindyForestBackground } from "@/lib/backgrounds/scenes/windy-forest";
 import type {
@@ -50,6 +52,26 @@ export const backgroundCollection = [
       speed: 0.7,
     },
     mount: createAuroraPeaksBackground,
+  },
+  {
+    kind: "space",
+    label: "Space",
+    description:
+      "Twinkling stars, drifting nebulae, and bright planets crossing deep space.",
+    options: {
+      speed: 0.42,
+    },
+    mount: createSpaceBackground,
+  },
+  {
+    kind: "fire",
+    label: "Fire",
+    description:
+      "Rising flames, floating embers, and smoke rolling over hot coals.",
+    options: {
+      speed: 0.9,
+    },
+    mount: createFireBackground,
   },
   {
     kind: "urban",
