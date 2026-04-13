@@ -1,6 +1,12 @@
 "use client";
 
-import { startTransition, useEffect, useRef, useState } from "react";
+import {
+  startTransition,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from "react";
 import {
   backgroundKinds,
   backgroundRegistry,
@@ -14,6 +20,15 @@ import {
   type ResumeCompany,
 } from "@/lib/resume/resume-data";
 import type { BackgroundKind } from "@/lib/backgrounds/types";
+import {
+  buildPongFrame,
+  createPongGameState,
+  restartPongGameState,
+  tickPongGame,
+  togglePongPause,
+  type PongControls,
+  type PongGameState,
+} from "@/lib/terminal/pong";
 import { terminalThemePreferenceStore } from "@/lib/terminal/theme-preference-store";
 
 type LineTone = "default" | "muted" | "accent" | "success" | "error" | "link";
@@ -47,6 +62,7 @@ type TerminalTab = {
   autocompleteSuggestions: string[];
   history: string[];
   historyIndex: number | null;
+  pong: PongGameState | null;
 };
 
 type TerminalState = {
@@ -93,6 +109,7 @@ type CommandResult = {
   nextThemeId?: TerminalThemeId;
   nextBackgroundId?: BackgroundKind;
   downloadUrl?: string;
+  nextPongGame?: PongGameState;
 };
 
 const terminalThemeOrder: TerminalThemeId[] = ["modern", "retro"];
@@ -222,6 +239,7 @@ const commandCatalog = {
   help: "Show available commands and usage tips.",
   contacts: "Print email, GitHub, and Telegram contact details.",
   resume: "Explore the current resume and download the PDF.",
+  pong: "Play a terminal ping-pong match against the bot.",
   theme: "List and switch terminal themes.",
   background: "List and switch ASCII backgrounds.",
 } as const;
@@ -250,6 +268,7 @@ const backgroundSubcommandNames = [
   "next",
   "set",
 ] as const;
+const pongSubcommandNames = ["help"] as const;
 const resumeAutocompleteNames = Array.from(
   new Set(
     resumeCompanies.flatMap((company) => [
@@ -309,6 +328,7 @@ function createTab(number: number): TerminalTab {
     autocompleteSuggestions: [],
     history: [],
     historyIndex: null,
+    pong: null,
   };
 }
 
@@ -329,6 +349,10 @@ function helpLines(): TerminalLine[] {
         "     Explore resume overview, list, read, and download.",
         "muted",
       ),
+    ],
+    [
+      segment("  pong", "success"),
+      segment("       Launch a classic terminal ping-pong match.", "muted"),
     ],
     [
       segment("  theme", "success"),
@@ -368,6 +392,71 @@ function contactLines(): TerminalLine[] {
       segment("@egorkolds", "success", "https://t.me/egorkolds"),
     ],
   ];
+}
+
+function pongHelpLines(): TerminalLine[] {
+  return [
+    [segment("PONG commands", "accent")],
+    [
+      segment("  pong", "success"),
+      segment("       Start the game immediately.", "muted"),
+    ],
+    [
+      segment("  pong help", "success"),
+      segment("  Show controls and match rules.", "muted"),
+    ],
+    [
+      segment("Controls", "muted"),
+      segment(": W/S or ArrowUp/ArrowDown move, P pauses, Q quits.", "default"),
+    ],
+    [
+      segment("Terminal feel", "muted"),
+      segment(": Ctrl+C interrupts, R restarts after game over.", "default"),
+    ],
+    [
+      segment("Rules", "muted"),
+      segment(": first to seven wins the match.", "default"),
+    ],
+  ];
+}
+
+function pongStartupLines(): TerminalLine[] {
+  return [
+    [segment("Launching PONG.TTY ...", "accent")],
+    [
+      segment("Controls", "muted"),
+      segment(": W/S or ArrowUp/ArrowDown move, P pause, Q quit.", "default"),
+    ],
+    [
+      segment("Tip", "muted"),
+      segment(": use paddle motion to add angle and pace to your return.", "default"),
+    ],
+    [segment("First to seven wins. Serve warm.", "success")],
+  ];
+}
+
+function runPongCommand(args: string[]): CommandResult {
+  const subcommand = args[0]?.toLowerCase();
+
+  if (!subcommand) {
+    return {
+      entries: [output(pongStartupLines())],
+      nextPongGame: createPongGameState(),
+    };
+  }
+
+  if (subcommand === "help") {
+    return { entries: [output(pongHelpLines())] };
+  }
+
+  return {
+    entries: [
+      output([
+        [segment(`Unknown pong command: ${subcommand}`, "error")],
+        ...pongHelpLines(),
+      ]),
+    ],
+  };
 }
 
 function resumeHelpLines(): TerminalLine[] {
@@ -1000,6 +1089,10 @@ function runCommand(
     return runResumeCommand(args);
   }
 
+  if (normalizedCommand === "pong") {
+    return runPongCommand(args);
+  }
+
   if (normalizedCommand === "theme") {
     return runThemeCommand(args, currentThemeId);
   }
@@ -1048,6 +1141,7 @@ function submitInput(
         cursorIndex: 0,
         autocompleteSuggestions: [],
         historyIndex: null,
+        pong: tab.pong,
       },
     };
   }
@@ -1067,6 +1161,7 @@ function submitInput(
       autocompleteSuggestions: [],
       history: [...tab.history, trimmedCommand],
       historyIndex: null,
+      pong: commandResult.nextPongGame ?? tab.pong,
     },
     nextThemeId: commandResult.nextThemeId,
     nextBackgroundId: commandResult.nextBackgroundId,
@@ -1265,6 +1360,14 @@ function getAutocompleteCandidates(
     return [];
   }
 
+  if (command === "pong") {
+    if (context.tokenIndex === 1) {
+      return pongSubcommandNames;
+    }
+
+    return [];
+  }
+
   return [];
 }
 
@@ -1327,6 +1430,166 @@ function toneClass(theme: TerminalTheme, tone: LineTone = "default") {
   return theme.toneClasses[tone];
 }
 
+function neutralPongControls(): PongControls {
+  return { up: false, down: false };
+}
+
+function pongStatusTone(game: PongGameState): LineTone {
+  if (game.phase === "gameover") {
+    return game.winner === "player" ? "success" : "error";
+  }
+
+  if (game.phase === "paused" || game.phase === "serve") {
+    return "accent";
+  }
+
+  return "default";
+}
+
+function pongGlyphTone(glyph: string): LineTone {
+  if (glyph === "#") {
+    return "success";
+  }
+
+  if (glyph === "o") {
+    return "accent";
+  }
+
+  if (glyph === "+" || glyph === "-" || glyph === "|" || glyph === ":") {
+    return "muted";
+  }
+
+  return "default";
+}
+
+function asciiLineToTerminalLine(line: string): TerminalLine {
+  if (!line) {
+    return [segment("")];
+  }
+
+  const parts: LineSegment[] = [];
+  let buffer = "";
+  let activeTone = pongGlyphTone(line[0]!);
+
+  for (const glyph of line) {
+    const glyphTone = pongGlyphTone(glyph);
+
+    if (glyphTone !== activeTone) {
+      parts.push(segment(buffer, activeTone));
+      buffer = glyph;
+      activeTone = glyphTone;
+      continue;
+    }
+
+    buffer += glyph;
+  }
+
+  if (buffer) {
+    parts.push(segment(buffer, activeTone));
+  }
+
+  return parts;
+}
+
+function pongFrameLines(game: PongGameState): TerminalLine[] {
+  const frame = buildPongFrame(game);
+
+  return [
+    [segment(frame.titleLine, "accent")],
+    [segment(frame.scoreLine, "default")],
+    [segment(frame.statusLine, pongStatusTone(game))],
+    ...frame.boardLines.map(asciiLineToTerminalLine),
+    [segment(frame.footerLine, "muted")],
+  ];
+}
+
+function pongExitLines(
+  game: PongGameState,
+  reason: "quit" | "interrupt",
+): TerminalLine[] {
+  const scoreTone =
+    game.phase === "gameover"
+      ? game.winner === "player"
+        ? "success"
+        : "error"
+      : "accent";
+
+  return [
+    ...(reason === "interrupt" ? [[segment("^C", "error")] as TerminalLine] : []),
+    [
+      segment(reason === "interrupt" ? "PONG interrupted." : "PONG exited.", "muted"),
+      segment(" Final score ", "muted"),
+      segment(`YOU ${game.playerScore} : BOT ${game.botScore}`, scoreTone),
+    ],
+  ];
+}
+
+function closePongSession(
+  tab: TerminalTab,
+  reason: "quit" | "interrupt",
+): TerminalTab {
+  if (!tab.pong) {
+    return tab;
+  }
+
+  return {
+    ...tab,
+    pong: null,
+    input: "",
+    cursorIndex: 0,
+    historyIndex: null,
+    entries: [...tab.entries, output(pongExitLines(tab.pong, reason))],
+  };
+}
+
+function renderOutputBlock(
+  lines: TerminalLine[],
+  keyPrefix: string,
+  theme: TerminalTheme,
+) {
+  return (
+    <div key={keyPrefix} className="space-y-0.5">
+      {lines.map((line, lineIndex) => (
+        <div
+          key={`${keyPrefix}-${lineIndex}`}
+          className="whitespace-pre-wrap break-words"
+        >
+          {line.map((part, partIndex) => {
+            const className = toneClass(theme, part.tone);
+
+            if (part.href) {
+              return (
+                <a
+                  key={`${keyPrefix}-${lineIndex}-${partIndex}`}
+                  href={part.href}
+                  className={`${className} ${theme.linkClassName}`}
+                  target={part.href.startsWith("http") ? "_blank" : undefined}
+                  rel={
+                    part.href.startsWith("http")
+                      ? "noreferrer noopener"
+                      : undefined
+                  }
+                >
+                  {part.text}
+                </a>
+              );
+            }
+
+            return (
+              <span
+                key={`${keyPrefix}-${lineIndex}-${partIndex}`}
+                className={className}
+              >
+                {part.text}
+              </span>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TerminalPrompt({ theme }: { theme: TerminalTheme }) {
   return (
     <span className="shrink-0 whitespace-nowrap">
@@ -1376,6 +1639,7 @@ export function TerminalWindow({
   const nextTabNumberRef = useRef(2);
   const terminalRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pongControlsRef = useRef<Record<string, PongControls>>({});
   const [isThemePreferenceReady, setIsThemePreferenceReady] = useState(false);
   const [terminalState, setTerminalState] = useState(
     createInitialTerminalState,
@@ -1385,10 +1649,15 @@ export function TerminalWindow({
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]!;
   const activeTheme = terminalThemes[themeId];
   const cursorGlyph = getCursorGlyph(activeTab.input, activeTab.cursorIndex);
+  const activePongPhase = activeTab.pong?.phase;
 
   useEffect(() => {
     terminalRef.current?.focus();
   }, [activeTabId, tabs.length]);
+
+  useEffect(() => {
+    pongControlsRef.current[activeTabId] = neutralPongControls();
+  }, [activeTabId]);
 
   useEffect(() => {
     const storedThemeId = terminalThemePreferenceStore.read();
@@ -1429,10 +1698,75 @@ export function TerminalWindow({
     activeTab.entries,
     activeTabId,
     activeTab.input,
+    activeTab.pong,
   ]);
+
+  const tickActivePong = useEffectEvent((now: number) => {
+    setTerminalState((currentState) => {
+      const currentTab =
+        currentState.tabs.find((tab) => tab.id === currentState.activeTabId) ??
+        currentState.tabs[0];
+
+      if (!currentTab?.pong) {
+        return currentState;
+      }
+
+      const controls =
+        pongControlsRef.current[currentTab.id] ?? neutralPongControls();
+      const nextPong = tickPongGame(currentTab.pong, controls, now);
+
+      if (nextPong === currentTab.pong) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        tabs: currentState.tabs.map((tab) =>
+          tab.id === currentTab.id
+            ? {
+                ...tab,
+                pong: nextPong,
+              }
+            : tab,
+        ),
+      };
+    });
+  });
+
+  useEffect(() => {
+    if (
+      !activePongPhase ||
+      activePongPhase === "paused" ||
+      activePongPhase === "gameover"
+    ) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      tickActivePong(performance.now());
+    }, 33);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeTabId, activePongPhase]);
 
   function focusTerminal() {
     terminalRef.current?.focus();
+  }
+
+  function setPongControl(direction: keyof PongControls, pressed: boolean) {
+    const currentControls =
+      pongControlsRef.current[activeTabId] ?? neutralPongControls();
+
+    pongControlsRef.current[activeTabId] = {
+      ...currentControls,
+      [direction]: pressed,
+    };
+  }
+
+  function resetPongControls(tabId: string = activeTabId) {
+    pongControlsRef.current[tabId] = neutralPongControls();
   }
 
   function makeTab() {
@@ -1460,6 +1794,8 @@ export function TerminalWindow({
   }
 
   function closeTab(tabId: string) {
+    delete pongControlsRef.current[tabId];
+
     setTerminalState((currentState) => {
       const closingIndex = currentState.tabs.findIndex(
         (tab) => tab.id === tabId,
@@ -1493,6 +1829,11 @@ export function TerminalWindow({
 
   function handlePaste(event: React.ClipboardEvent<HTMLElement>) {
     event.preventDefault();
+
+    if (activeTab.pong) {
+      return;
+    }
+
     appendText(event.clipboardData.getData("text").replace(/\s+/g, " "));
   }
 
@@ -1500,6 +1841,101 @@ export function TerminalWindow({
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "w") {
       event.preventDefault();
       closeTab(activeTabId);
+      return;
+    }
+
+    if (activeTab.pong) {
+      const lowerKey = event.key.toLowerCase();
+
+      if ((event.metaKey || event.ctrlKey) && lowerKey === "c") {
+        event.preventDefault();
+        resetPongControls();
+        updateActiveTab((tab) => closePongSession(tab, "interrupt"));
+        return;
+      }
+
+      if (lowerKey === "q") {
+        event.preventDefault();
+        resetPongControls();
+        updateActiveTab((tab) => closePongSession(tab, "quit"));
+        return;
+      }
+
+      if (lowerKey === "p") {
+        event.preventDefault();
+        resetPongControls();
+        updateActiveTab((tab) =>
+          tab.pong
+            ? {
+                ...tab,
+                pong: togglePongPause(tab.pong),
+              }
+            : tab,
+        );
+        return;
+      }
+
+      if (activeTab.pong.phase === "gameover") {
+        if (lowerKey === "r" || event.key === "Enter") {
+          event.preventDefault();
+          resetPongControls();
+          updateActiveTab((tab) => ({
+            ...tab,
+            pong: restartPongGameState(),
+          }));
+          return;
+        }
+
+        event.preventDefault();
+        return;
+      }
+
+      if (activeTab.pong.phase === "paused") {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          resetPongControls();
+          updateActiveTab((tab) =>
+            tab.pong
+              ? {
+                  ...tab,
+                  pong: togglePongPause(tab.pong),
+                }
+              : tab,
+          );
+          return;
+        }
+
+        event.preventDefault();
+        return;
+      }
+
+      if (lowerKey === "w" || event.key === "ArrowUp") {
+        event.preventDefault();
+        setPongControl("up", true);
+        return;
+      }
+
+      if (lowerKey === "s" || event.key === "ArrowDown") {
+        event.preventDefault();
+        setPongControl("down", true);
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        resetPongControls();
+        updateActiveTab((tab) =>
+          tab.pong
+            ? {
+                ...tab,
+                pong: togglePongPause(tab.pong),
+              }
+            : tab,
+        );
+        return;
+      }
+
+      event.preventDefault();
       return;
     }
 
@@ -1604,12 +2040,33 @@ export function TerminalWindow({
     }
   }
 
+  function handleKeyUp(event: React.KeyboardEvent<HTMLElement>) {
+    if (!activeTab.pong) {
+      return;
+    }
+
+    const lowerKey = event.key.toLowerCase();
+
+    if (lowerKey === "w" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setPongControl("up", false);
+      return;
+    }
+
+    if (lowerKey === "s" || event.key === "ArrowDown") {
+      event.preventDefault();
+      setPongControl("down", false);
+    }
+  }
+
   return (
     <section
       ref={terminalRef}
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
       onPaste={handlePaste}
+      onBlur={() => resetPongControls()}
       className={`${activeTheme.shellClassName} flex h-full min-h-[20rem] w-full max-w-3xl flex-col outline-none`}
     >
       <div className={activeTheme.headerClassName}>
@@ -1710,82 +2167,48 @@ export function TerminalWindow({
                 );
               }
 
-              return (
-                <div key={entry.id} className="space-y-0.5">
-                  {entry.lines.map((line, lineIndex) => (
-                    <div
-                      key={`${entry.id}-${lineIndex}`}
-                      className="whitespace-pre-wrap break-words"
-                    >
-                      {line.map((part, partIndex) => {
-                        const className = toneClass(activeTheme, part.tone);
-
-                        if (part.href) {
-                          return (
-                            <a
-                              key={`${entry.id}-${lineIndex}-${partIndex}`}
-                              href={part.href}
-                              className={`${className} ${activeTheme.linkClassName}`}
-                              target={
-                                part.href.startsWith("http")
-                                  ? "_blank"
-                                  : undefined
-                              }
-                              rel={
-                                part.href.startsWith("http")
-                                  ? "noreferrer noopener"
-                                  : undefined
-                              }
-                            >
-                              {part.text}
-                            </a>
-                          );
-                        }
-
-                        return (
-                          <span
-                            key={`${entry.id}-${lineIndex}-${partIndex}`}
-                            className={className}
-                          >
-                            {part.text}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              );
+              return renderOutputBlock(entry.lines, entry.id, activeTheme);
             })}
 
-            <div className="space-y-1">
-              <div className="flex items-start gap-3 break-all">
-                <TerminalPrompt theme={activeTheme} />
-                <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
-                  {activeTab.input.slice(0, activeTab.cursorIndex)}
-                  <span
-                    className="inline-block w-[1ch] rounded-[2px] align-baseline text-left [animation:terminal-cursor-classic_1.05s_steps(1)_infinite]"
-                    style={activeTheme.cursorStyle}
-                  >
-                    {cursorGlyph}
-                  </span>
-                  {activeTab.input.slice(
-                    activeTab.cursorIndex +
-                      (activeTab.cursorIndex < activeTab.input.length ? 1 : 0),
-                  )}
-                </span>
-              </div>
+            {activeTab.pong
+              ? renderOutputBlock(
+                  pongFrameLines(activeTab.pong),
+                  `${activeTab.id}-pong`,
+                  activeTheme,
+                )
+              : (
+                  <div className="space-y-1">
+                    <div className="flex items-start gap-3 break-all">
+                      <TerminalPrompt theme={activeTheme} />
+                      <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                        {activeTab.input.slice(0, activeTab.cursorIndex)}
+                        <span
+                          className="inline-block w-[1ch] rounded-[2px] align-baseline text-left [animation:terminal-cursor-classic_1.05s_steps(1)_infinite]"
+                          style={activeTheme.cursorStyle}
+                        >
+                          {cursorGlyph}
+                        </span>
+                        {activeTab.input.slice(
+                          activeTab.cursorIndex +
+                            (activeTab.cursorIndex < activeTab.input.length
+                              ? 1
+                              : 0),
+                        )}
+                      </span>
+                    </div>
 
-              {activeTab.autocompleteSuggestions.length > 0 ? (
-                <div className="flex items-start gap-3">
-                  <TerminalPromptSpacer theme={activeTheme} />
-                  <div className="min-w-0 flex-1 whitespace-pre-wrap break-words">
-                    <span className={toneClass(activeTheme, "accent")}>
-                      {activeTab.autocompleteSuggestions.join(", ")}
-                    </span>
+                    {activeTab.autocompleteSuggestions.length > 0 ? (
+                      <div className="flex items-start gap-3">
+                        <TerminalPromptSpacer theme={activeTheme} />
+                        <div className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                          <span className={toneClass(activeTheme, "accent")}>
+                            {activeTab.autocompleteSuggestions.join(", ")}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                </div>
-              ) : null}
-            </div>
+                )}
           </div>
         </div>
       </div>
