@@ -2,6 +2,17 @@ import type {
   BackgroundController,
   WindyForestBackgroundOptions,
 } from "@/lib/backgrounds/types";
+import {
+  clamp,
+  createAsciiStage,
+  createGrid,
+  lerp,
+  noise2D,
+  pick,
+  randomRange,
+  renderGrid,
+  setCell,
+} from "@/lib/backgrounds/scenes/shared";
 
 type Palette = {
   foliage: string;
@@ -31,39 +42,6 @@ type Particle = {
   char: string;
   color: string;
 };
-
-type CellMeasurement = {
-  width: number;
-  height: number;
-};
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function lerp(start: number, end: number, amount: number) {
-  return start + (end - start) * amount;
-}
-
-function escapeHtml(text: string) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function randomRange(min: number, max: number) {
-  return min + Math.random() * (max - min);
-}
-
-function noise2D(x: number, y: number, seed: number) {
-  const value = Math.sin(x * 12.9898 + y * 78.233 + seed * 37.719) * 43758.5453;
-  return value - Math.floor(value);
-}
-
-function pick<T>(list: readonly T[]) {
-  return list[Math.floor(Math.random() * list.length)];
-}
 
 function createPalette(depth: number, glow: number): Palette {
   const greenHue = lerp(132, 104, depth);
@@ -122,125 +100,19 @@ function createParticle(cols: number, rows: number, horizon: number): Particle {
   };
 }
 
-function ensureTargetStyles(element: HTMLElement) {
-  const computed = window.getComputedStyle(element);
-
-  if (computed.position === "static") {
-    element.style.position = "relative";
-  }
-
-  if (!element.style.overflow) {
-    element.style.overflow = "hidden";
-  }
-}
-
-function measureCell(
-  element: HTMLElement,
-  fontSize: number,
-  lineHeight: number,
-  fontFamily: string,
-): CellMeasurement {
-  const probe = document.createElement("span");
-  probe.textContent = "MMMMMMMMMM";
-  probe.setAttribute("aria-hidden", "true");
-  probe.style.position = "absolute";
-  probe.style.visibility = "hidden";
-  probe.style.pointerEvents = "none";
-  probe.style.whiteSpace = "pre";
-  probe.style.fontFamily = fontFamily;
-  probe.style.fontSize = `${fontSize}px`;
-  probe.style.lineHeight = String(lineHeight);
-
-  element.appendChild(probe);
-
-  const rect = probe.getBoundingClientRect();
-  const width = rect.width / 10;
-  const height = rect.height;
-
-  probe.remove();
-
-  return {
-    width: width || fontSize * 0.62,
-    height: height || fontSize * lineHeight,
-  };
-}
-
-function setCell(
-  cells: string[][],
-  colors: Array<Array<string | null>>,
-  x: number,
-  y: number,
-  char: string,
-  color: string,
-) {
-  const rowWidth = cells[0]?.length ?? 0;
-  if (y < 0 || y >= cells.length || x < 0 || x >= rowWidth) {
-    return;
-  }
-
-  cells[y][x] = char;
-  colors[y][x] = color;
-}
-
-function renderLine(chars: string[], colors: Array<string | null>) {
-  let html = "";
-  let currentColor: string | null = null;
-  let buffer = "";
-
-  function flush() {
-    if (!buffer) {
-      return;
-    }
-
-    const text = escapeHtml(buffer);
-    html += currentColor
-      ? `<span style="color:${currentColor}">${text}</span>`
-      : text;
-    buffer = "";
-  }
-
-  for (let index = 0; index < chars.length; index += 1) {
-    const nextColor = colors[index];
-    if (nextColor !== currentColor) {
-      flush();
-      currentColor = nextColor;
-    }
-
-    buffer += chars[index];
-  }
-
-  flush();
-  return html;
-}
-
 export function createWindyForestBackground(
   target: HTMLElement,
   options: WindyForestBackgroundOptions = {},
 ): BackgroundController {
-  if (!(target instanceof HTMLElement)) {
-    throw new Error(
-      "createWindyForestBackground requires an HTMLElement target.",
-    );
-  }
-
-  ensureTargetStyles(target);
-
-  const width = target.clientWidth;
-  const height = target.clientHeight;
-
-  if (!width || !height) {
-    throw new Error("Target element needs a non-zero size before rendering.");
-  }
-
-  const fontFamily =
-    options.fontFamily ??
-    '"Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace';
-  const fontSize =
-    options.fontSize ?? clamp(Math.floor(Math.min(width, height) / 22), 8, 18);
-  const lineHeight = options.lineHeight ?? 1.04;
-  const cell = measureCell(target, fontSize, lineHeight, fontFamily);
-  const cols = Math.max(12, Math.floor(width / cell.width));
-  const rows = Math.max(8, Math.floor(height / cell.height));
+  const { overlay, cols, rows } = createAsciiStage(target, options, {
+    color: "#dff6f4",
+    textShadow: "0 0 10px rgba(11, 14, 28, 0.35)",
+    background: [
+      "radial-gradient(circle at 20% 15%, rgba(255, 183, 77, 0.16), transparent 30%)",
+      "radial-gradient(circle at 80% 22%, rgba(120, 221, 196, 0.18), transparent 28%)",
+      "linear-gradient(180deg, #18314f 0%, #274060 28%, #49626d 56%, #1f3322 100%)",
+    ].join(","),
+  });
   const horizon = Math.floor(rows * 0.66);
   const treeCount = clamp(Math.floor(cols / 11), 4, 14);
   const particles: Particle[] = [];
@@ -248,31 +120,6 @@ export function createWindyForestBackground(
   let rafId = 0;
   let running = false;
   let startTime = performance.now();
-
-  const overlay = document.createElement("pre");
-  overlay.setAttribute("aria-hidden", "true");
-  overlay.style.position = "absolute";
-  overlay.style.inset = "0";
-  overlay.style.margin = "0";
-  overlay.style.padding = "0";
-  overlay.style.overflow = "hidden";
-  overlay.style.whiteSpace = "pre";
-  overlay.style.fontFamily = fontFamily;
-  overlay.style.fontSize = `${fontSize}px`;
-  overlay.style.lineHeight = String(lineHeight);
-  overlay.style.letterSpacing = "0";
-  overlay.style.userSelect = "none";
-  overlay.style.pointerEvents = "none";
-  overlay.style.color = "#dff6f4";
-  overlay.style.textShadow = "0 0 10px rgba(11, 14, 28, 0.35)";
-  overlay.style.filter = "brightness(0.2)";
-  overlay.style.background = [
-    "radial-gradient(circle at 20% 15%, rgba(255, 183, 77, 0.16), transparent 30%)",
-    "radial-gradient(circle at 80% 22%, rgba(120, 221, 196, 0.18), transparent 28%)",
-    "linear-gradient(180deg, #18314f 0%, #274060 28%, #49626d 56%, #1f3322 100%)",
-  ].join(",");
-
-  target.replaceChildren(overlay);
 
   for (
     let particleIndex = 0;
@@ -545,10 +392,7 @@ export function createWindyForestBackground(
     const elapsed = (now - startTime) / 1000;
     const time = elapsed * (options.speed ?? 0.8);
     const wind = Math.sin(time * 0.9) * 0.8 + Math.sin(time * 2.4 + 1.2) * 0.45;
-    const cells = Array.from({ length: rows }, () => Array(cols).fill(" "));
-    const colors = Array.from({ length: rows }, () =>
-      Array<string | null>(cols).fill(null),
-    );
+    const { cells, colors } = createGrid(rows, cols);
 
     drawSky(cells, colors, time, wind);
     drawGround(cells, colors, time, wind);
@@ -559,12 +403,7 @@ export function createWindyForestBackground(
 
     drawParticles(cells, colors, time, wind);
 
-    const htmlLines: string[] = [];
-    for (let row = 0; row < rows; row += 1) {
-      htmlLines.push(renderLine(cells[row], colors[row]));
-    }
-
-    overlay.innerHTML = htmlLines.join("\n");
+    overlay.innerHTML = renderGrid(cells, colors);
     rafId = window.requestAnimationFrame(frame);
   }
 

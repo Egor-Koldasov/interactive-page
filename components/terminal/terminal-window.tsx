@@ -1,6 +1,11 @@
 "use client";
 
 import { startTransition, useEffect, useRef, useState } from "react";
+import {
+  backgroundRegistry,
+  natureBackgroundKinds,
+} from "@/lib/backgrounds/registry";
+import type { BackgroundKind } from "@/lib/backgrounds/types";
 import { terminalThemePreferenceStore } from "@/lib/terminal/theme-preference-store";
 
 type LineTone = "default" | "muted" | "accent" | "success" | "error";
@@ -77,6 +82,7 @@ type TerminalTheme = {
 type CommandResult = {
   entries: TerminalEntry[];
   nextThemeId?: TerminalThemeId;
+  nextBackgroundId?: BackgroundKind;
 };
 
 const terminalThemeOrder: TerminalThemeId[] = ["modern", "retro"];
@@ -204,6 +210,7 @@ const commandCatalog = {
   help: "Show available commands and usage tips.",
   contacts: "Print email, GitHub, and Telegram contact details.",
   theme: "List and switch terminal themes.",
+  background: "List and switch ASCII backgrounds.",
 } as const;
 
 const commandNames = Object.keys(commandCatalog) as Array<
@@ -255,15 +262,19 @@ function helpLines(): TerminalLine[] {
     [segment("Available commands", "accent")],
     [
       segment("  help", "success"),
-      segment("      Show available commands and shortcuts.", "muted"),
+      segment("       Show available commands and shortcuts.", "muted"),
     ],
     [
       segment("  contacts", "success"),
-      segment("  Print email, GitHub, and Telegram.", "muted"),
+      segment("   Print author's contact details.", "muted"),
     ],
     [
       segment("  theme", "success"),
-      segment("     List and switch terminal looks.", "muted"),
+      segment("      Manage terminal theme.", "muted"),
+    ],
+    [
+      segment("  background", "success"),
+      segment(" Manage page background.", "muted"),
     ],
     // [
     //   segment("Tips:", "accent"),
@@ -299,6 +310,10 @@ function contactLines(): TerminalLine[] {
 
 function isTerminalThemeId(value: string): value is TerminalThemeId {
   return terminalThemeOrder.includes(value as TerminalThemeId);
+}
+
+function isBackgroundKind(value: string): value is BackgroundKind {
+  return natureBackgroundKinds.includes(value as BackgroundKind);
 }
 
 function themeHelpLines(): TerminalLine[] {
@@ -439,9 +454,158 @@ function runThemeCommand(
   };
 }
 
+function backgroundHelpLines(): TerminalLine[] {
+  return [
+    [segment("Background commands", "accent")],
+    [
+      segment("  background list", "success"),
+      segment("    Show available ASCII backgrounds.", "muted"),
+    ],
+    [
+      segment("  background current", "success"),
+      segment(" Show the active background.", "muted"),
+    ],
+    [
+      segment("  background set <name>", "success"),
+      segment(" Switch to a background by id.", "muted"),
+    ],
+    [
+      segment("Example: ", "muted"),
+      segment("background set aurora-peaks", "success"),
+    ],
+  ];
+}
+
+function backgroundListLines(
+  currentBackgroundId: BackgroundKind,
+): TerminalLine[] {
+  return [
+    [segment("Available backgrounds", "accent")],
+    ...natureBackgroundKinds.map((backgroundId) => {
+      const background = backgroundRegistry[backgroundId];
+      const isActive = backgroundId === currentBackgroundId;
+
+      return [
+        ...(isActive ? [segment("  [active] ", "accent")] : [segment("  ")]),
+        segment(backgroundId, isActive ? "success" : "default"),
+        segment(`  ${background.label}`, "accent"),
+        segment(`  ${background.description}`, "muted"),
+      ];
+    }),
+  ];
+}
+
+function backgroundCurrentLines(
+  currentBackgroundId: BackgroundKind,
+): TerminalLine[] {
+  const background = backgroundRegistry[currentBackgroundId];
+
+  return [
+    [segment("Current background", "accent")],
+    [segment(`  ${currentBackgroundId}`, "success")],
+    [segment(`  ${background.label}`, "accent")],
+    [segment(`  ${background.description}`, "muted")],
+  ];
+}
+
+function runBackgroundCommand(
+  args: string[],
+  currentBackgroundId: BackgroundKind,
+): CommandResult {
+  if (args.length === 0) {
+    return { entries: [output(backgroundHelpLines())] };
+  }
+
+  const subcommand = args[0]?.toLowerCase();
+
+  if (subcommand === "help") {
+    return { entries: [output(backgroundHelpLines())] };
+  }
+
+  if (subcommand === "list") {
+    return { entries: [output(backgroundListLines(currentBackgroundId))] };
+  }
+
+  if (subcommand === "current") {
+    return { entries: [output(backgroundCurrentLines(currentBackgroundId))] };
+  }
+
+  if (subcommand === "set") {
+    const requestedBackground = args[1]?.toLowerCase();
+
+    if (!requestedBackground) {
+      return {
+        entries: [
+          output([
+            [segment("Usage: background set <name>", "error")],
+            ...backgroundHelpLines(),
+          ]),
+        ],
+      };
+    }
+
+    if (!isBackgroundKind(requestedBackground)) {
+      return {
+        entries: [
+          output([
+            [segment(`Unknown background: ${requestedBackground}`, "error")],
+            [
+              segment("Run ", "muted"),
+              segment("background list", "accent"),
+              segment(" to see available backgrounds.", "muted"),
+            ],
+          ]),
+        ],
+      };
+    }
+
+    if (requestedBackground === currentBackgroundId) {
+      return {
+        entries: [
+          output([
+            [
+              segment("Background already active: ", "muted"),
+              segment(requestedBackground, "accent"),
+            ],
+          ]),
+        ],
+      };
+    }
+
+    return {
+      entries: [
+        output([
+          [
+            segment("Background changed to ", "muted"),
+            segment(requestedBackground, "success"),
+            segment(".", "muted"),
+          ],
+          [
+            segment(
+              backgroundRegistry[requestedBackground].description,
+              "muted",
+            ),
+          ],
+        ]),
+      ],
+      nextBackgroundId: requestedBackground,
+    };
+  }
+
+  return {
+    entries: [
+      output([
+        [segment(`Unknown background command: ${subcommand}`, "error")],
+        ...backgroundHelpLines(),
+      ]),
+    ],
+  };
+}
+
 function runCommand(
   rawCommand: string,
   currentThemeId: TerminalThemeId,
+  currentBackgroundId: BackgroundKind,
 ): CommandResult {
   const trimmedCommand = rawCommand.trim();
   const [command, ...args] = trimmedCommand.split(/\s+/);
@@ -459,6 +623,10 @@ function runCommand(
     return runThemeCommand(args, currentThemeId);
   }
 
+  if (normalizedCommand === "background") {
+    return runBackgroundCommand(args, currentBackgroundId);
+  }
+
   return {
     entries: [
       output([
@@ -472,7 +640,12 @@ function runCommand(
 function submitInput(
   tab: TerminalTab,
   currentThemeId: TerminalThemeId,
-): { nextTab: TerminalTab; nextThemeId?: TerminalThemeId } {
+  currentBackgroundId: BackgroundKind,
+): {
+  nextTab: TerminalTab;
+  nextThemeId?: TerminalThemeId;
+  nextBackgroundId?: BackgroundKind;
+} {
   const rawCommand = tab.input;
   const trimmedCommand = rawCommand.trim();
   const nextEntries: TerminalEntry[] = [
@@ -496,7 +669,11 @@ function submitInput(
     };
   }
 
-  const commandResult = runCommand(trimmedCommand, currentThemeId);
+  const commandResult = runCommand(
+    trimmedCommand,
+    currentThemeId,
+    currentBackgroundId,
+  );
 
   return {
     nextTab: {
@@ -508,6 +685,7 @@ function submitInput(
       historyIndex: null,
     },
     nextThemeId: commandResult.nextThemeId,
+    nextBackgroundId: commandResult.nextBackgroundId,
   };
 }
 
@@ -678,7 +856,15 @@ function createInitialTerminalState(): TerminalState {
   };
 }
 
-export function TerminalWindow() {
+type TerminalWindowProps = {
+  currentBackgroundId: BackgroundKind;
+  onBackgroundChange: (backgroundId: BackgroundKind) => void;
+};
+
+export function TerminalWindow({
+  currentBackgroundId,
+  onBackgroundChange,
+}: TerminalWindowProps) {
   const nextTabNumberRef = useRef(2);
   const terminalRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -806,24 +992,24 @@ export function TerminalWindow() {
 
     if (event.key === "Enter") {
       event.preventDefault();
-      setTerminalState((currentState) => {
-        const currentTab =
-          currentState.tabs.find(
-            (tab) => tab.id === currentState.activeTabId,
-          ) ?? currentState.tabs[0]!;
-        const { nextTab, nextThemeId } = submitInput(
-          currentTab,
-          currentState.themeId,
-        );
+      const { nextTab, nextThemeId, nextBackgroundId } = submitInput(
+        activeTab,
+        themeId,
+        currentBackgroundId,
+      );
 
-        return {
-          ...currentState,
-          themeId: nextThemeId ?? currentState.themeId,
-          tabs: currentState.tabs.map((tab) =>
-            tab.id === currentState.activeTabId ? nextTab : tab,
-          ),
-        };
-      });
+      setTerminalState((currentState) => ({
+        ...currentState,
+        themeId: nextThemeId ?? currentState.themeId,
+        tabs: currentState.tabs.map((tab) =>
+          tab.id === currentState.activeTabId ? nextTab : tab,
+        ),
+      }));
+
+      if (nextBackgroundId && nextBackgroundId !== currentBackgroundId) {
+        onBackgroundChange(nextBackgroundId);
+      }
+
       return;
     }
 
