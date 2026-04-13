@@ -25,12 +25,14 @@ export type WindyForestBackgroundOptions = AsciiBackgroundOptions;
 export type MoonlitTideBackgroundOptions = AsciiBackgroundOptions;
 export type DesertDunesBackgroundOptions = AsciiBackgroundOptions;
 export type AuroraPeaksBackgroundOptions = AsciiBackgroundOptions;
+export type UrbanBackgroundOptions = AsciiBackgroundOptions;
 
 export interface BackgroundOptionsMap {
   "windy-forest": WindyForestBackgroundOptions;
   "moonlit-tide": MoonlitTideBackgroundOptions;
   "desert-dunes": DesertDunesBackgroundOptions;
   "aurora-peaks": AuroraPeaksBackgroundOptions;
+  urban: UrbanBackgroundOptions;
 }
 
 export type BackgroundKind = keyof BackgroundOptionsMap;
@@ -38,3 +40,9 @@ export type BackgroundKind = keyof BackgroundOptionsMap;
 export type BackgroundRegistry = {
   [Kind in BackgroundKind]: BackgroundSceneDefinition<BackgroundOptionsMap[Kind]>;
 };
+
+export type BackgroundCollectionEntry<Kind extends BackgroundKind = BackgroundKind> =
+  BackgroundSceneDefinition<BackgroundOptionsMap[Kind]> & {
+    kind: Kind;
+    options: BackgroundOptionsMap[Kind];
+  };

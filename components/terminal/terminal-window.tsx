@@ -2,8 +2,8 @@
 
 import { startTransition, useEffect, useRef, useState } from "react";
 import {
+  backgroundKinds,
   backgroundRegistry,
-  natureBackgroundKinds,
 } from "@/lib/backgrounds/registry";
 import type { BackgroundKind } from "@/lib/backgrounds/types";
 import { terminalThemePreferenceStore } from "@/lib/terminal/theme-preference-store";
@@ -313,7 +313,11 @@ function isTerminalThemeId(value: string): value is TerminalThemeId {
 }
 
 function isBackgroundKind(value: string): value is BackgroundKind {
-  return natureBackgroundKinds.includes(value as BackgroundKind);
+  return backgroundKinds.includes(value as BackgroundKind);
+}
+
+function normalizeBackgroundAlias(value: string) {
+  return value === "neon-district" || value === "urbar" ? "urban" : value;
 }
 
 function themeHelpLines(): TerminalLine[] {
@@ -481,7 +485,7 @@ function backgroundListLines(
 ): TerminalLine[] {
   return [
     [segment("Available backgrounds", "accent")],
-    ...natureBackgroundKinds.map((backgroundId) => {
+    ...backgroundKinds.map((backgroundId) => {
       const background = backgroundRegistry[backgroundId];
       const isActive = backgroundId === currentBackgroundId;
 
@@ -531,9 +535,12 @@ function runBackgroundCommand(
   }
 
   if (subcommand === "set") {
-    const requestedBackground = args[1]?.toLowerCase();
+    const requestedBackgroundRaw = args[1]?.toLowerCase();
+    const requestedBackground = requestedBackgroundRaw
+      ? normalizeBackgroundAlias(requestedBackgroundRaw)
+      : undefined;
 
-    if (!requestedBackground) {
+    if (!requestedBackgroundRaw || !requestedBackground) {
       return {
         entries: [
           output([
