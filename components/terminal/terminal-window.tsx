@@ -365,6 +365,10 @@ function resumeHelpLines(): TerminalLine[] {
       segment(" Open the resume PDF.", "muted"),
     ],
     [
+      segment("  resume help", "success"),
+      segment("     Show resume usage and examples.", "muted"),
+    ],
+    [
       segment("Example: ", "muted"),
       segment("resume read iorad", "success"),
     ],
@@ -791,6 +795,10 @@ function backgroundHelpLines(): TerminalLine[] {
   return [
     [segment("Background commands", "accent")],
     [
+      segment("  Usage", "muted"),
+      segment(": background <command>", "default"),
+    ],
+    [
       segment("  background list", "success"),
       segment("    Show available ASCII backgrounds.", "muted"),
     ],
@@ -805,6 +813,10 @@ function backgroundHelpLines(): TerminalLine[] {
     [
       segment("  background set <name>", "success"),
       segment(" Switch to a background by id.", "muted"),
+    ],
+    [
+      segment("  background help", "success"),
+      segment("    Show background usage and examples.", "muted"),
     ],
     [
       segment("Example: ", "muted"),
