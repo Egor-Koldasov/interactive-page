@@ -1,11 +1,14 @@
-# Egor Koldasov Landing Page
+# My web page
 
-Next.js + Tailwind landing page inspired by the original prototype, rebuilt as a
-single-page app with:
+There are many pages on the internet, but this one is mine.
 
-- a reusable animated background system
-- a React/TypeScript windy ASCII forest scene
-- an interactive multi-tab terminal with `help` and `contacts`
+## What is it
+
+An ordinary terminal, resting in a corner of a world wide web.
+
+## What is it for
+
+Nothing much. But you can run commands in it.
 
 ## Run locally
 

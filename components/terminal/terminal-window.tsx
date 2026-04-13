@@ -620,6 +620,16 @@ function isBackgroundKind(value: string): value is BackgroundKind {
   return backgroundKinds.includes(value as BackgroundKind);
 }
 
+function getNextItem<T>(items: readonly T[], currentItem: T): T {
+  const currentIndex = items.indexOf(currentItem);
+
+  if (currentIndex === -1) {
+    return items[0]!;
+  }
+
+  return items[(currentIndex + 1) % items.length]!;
+}
+
 function normalizeBackgroundAlias(value: string) {
   return value === "neon-district" || value === "urbar" ? "urban" : value;
 }
@@ -634,6 +644,10 @@ function themeHelpLines(): TerminalLine[] {
     [
       segment("  theme set <name>", "success"),
       segment("   Switch to a theme by name.", "muted"),
+    ],
+    [
+      segment("  theme next", "success"),
+      segment("       Cycle to the next theme.", "muted"),
     ],
     [
       segment("  theme current", "success"),
@@ -673,6 +687,17 @@ function themeCurrentLines(currentThemeId: TerminalThemeId): TerminalLine[] {
   ];
 }
 
+function themeChangedLines(themeId: TerminalThemeId): TerminalLine[] {
+  return [
+    [
+      segment("Theme changed to ", "muted"),
+      segment(terminalThemes[themeId].name, "success"),
+      segment(".", "muted"),
+    ],
+    [segment(terminalThemes[themeId].description, "muted")],
+  ];
+}
+
 function runThemeCommand(
   args: string[],
   currentThemeId: TerminalThemeId,
@@ -693,6 +718,15 @@ function runThemeCommand(
 
   if (subcommand === "current") {
     return { entries: [output(themeCurrentLines(currentThemeId))] };
+  }
+
+  if (subcommand === "next") {
+    const nextThemeId = getNextItem(terminalThemeOrder, currentThemeId);
+
+    return {
+      entries: [output(themeChangedLines(nextThemeId))],
+      nextThemeId,
+    };
   }
 
   if (subcommand === "set") {
@@ -738,16 +772,7 @@ function runThemeCommand(
     }
 
     return {
-      entries: [
-        output([
-          [
-            segment("Theme changed to ", "muted"),
-            segment(terminalThemes[requestedTheme].name, "success"),
-            segment(".", "muted"),
-          ],
-          [segment(terminalThemes[requestedTheme].description, "muted")],
-        ]),
-      ],
+      entries: [output(themeChangedLines(requestedTheme))],
       nextThemeId: requestedTheme,
     };
   }
@@ -772,6 +797,10 @@ function backgroundHelpLines(): TerminalLine[] {
     [
       segment("  background current", "success"),
       segment(" Show the active background.", "muted"),
+    ],
+    [
+      segment("  background next", "success"),
+      segment("    Cycle to the next background.", "muted"),
     ],
     [
       segment("  background set <name>", "success"),
@@ -816,6 +845,19 @@ function backgroundCurrentLines(
   ];
 }
 
+function backgroundChangedLines(
+  backgroundId: BackgroundKind,
+): TerminalLine[] {
+  return [
+    [
+      segment("Background changed to ", "muted"),
+      segment(backgroundId, "success"),
+      segment(".", "muted"),
+    ],
+    [segment(backgroundRegistry[backgroundId].description, "muted")],
+  ];
+}
+
 function runBackgroundCommand(
   args: string[],
   currentBackgroundId: BackgroundKind,
@@ -836,6 +878,15 @@ function runBackgroundCommand(
 
   if (subcommand === "current") {
     return { entries: [output(backgroundCurrentLines(currentBackgroundId))] };
+  }
+
+  if (subcommand === "next") {
+    const nextBackgroundId = getNextItem(backgroundKinds, currentBackgroundId);
+
+    return {
+      entries: [output(backgroundChangedLines(nextBackgroundId))],
+      nextBackgroundId,
+    };
   }
 
   if (subcommand === "set") {
@@ -884,21 +935,7 @@ function runBackgroundCommand(
     }
 
     return {
-      entries: [
-        output([
-          [
-            segment("Background changed to ", "muted"),
-            segment(requestedBackground, "success"),
-            segment(".", "muted"),
-          ],
-          [
-            segment(
-              backgroundRegistry[requestedBackground].description,
-              "muted",
-            ),
-          ],
-        ]),
-      ],
+      entries: [output(backgroundChangedLines(requestedBackground))],
       nextBackgroundId: requestedBackground,
     };
   }
