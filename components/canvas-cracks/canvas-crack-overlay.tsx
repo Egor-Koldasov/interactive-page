@@ -77,6 +77,7 @@ function makeRootShard(width: number, height: number): Shard {
 }
 
 let shardId = 2;
+let snapshotStyleProperties: string[] | null = null;
 
 export function CanvasCrackOverlay({
   trigger,
@@ -109,11 +110,10 @@ export function CanvasCrackOverlay({
       try {
         source = await toCanvas(target, {
           cacheBust: true,
+          includeStyleProperties: getSnapshotStyleProperties(),
           pixelRatio,
           width: viewportWidth,
           height: viewportHeight,
-          canvasWidth: viewportWidth * pixelRatio,
-          canvasHeight: viewportHeight * pixelRatio,
           filter: (node) =>
             !(node instanceof HTMLElement) ||
             node.dataset.canvasCrackOverlay !== "true",
@@ -250,7 +250,14 @@ export function CanvasCrackOverlay({
         shard.scale = Math.max(0.86, shard.scale - 0.025 * dt);
       }
 
-      drawShard(context, state.source, shard, state.width, state.height);
+      drawShard(
+        context,
+        state.source,
+        shard,
+        state.width,
+        state.height,
+        state.rootRect,
+      );
     }
 
     state.shards = state.shards.filter(
@@ -382,6 +389,7 @@ function drawShard(
   shard: Shard,
   width: number,
   height: number,
+  rootRect: CrackState["rootRect"],
 ) {
   context.save();
   context.translate(shard.x, shard.y);
@@ -398,8 +406,7 @@ function drawShard(
   context.lineCap = "round";
   context.strokeStyle = "rgba(215, 255, 236, 0.42)";
   context.lineWidth = 3;
-  tracePolygon(context, shard.polygon);
-  context.stroke();
+  strokeInteriorEdges(context, shard.polygon, rootRect);
 
   for (const seg of shard.dangleSegs) {
     const [, , , , , w0 = DANGLING_BASE_WIDTH, w1 = DANGLING_BASE_WIDTH] = seg;
@@ -412,6 +419,26 @@ function drawShard(
 
   context.globalCompositeOperation = "source-over";
   context.restore();
+}
+
+function strokeInteriorEdges(
+  context: CanvasRenderingContext2D,
+  polygon: CrackPoint[],
+  rootRect: CrackState["rootRect"],
+) {
+  for (let i = 0; i < polygon.length; i += 1) {
+    const a = polygon[i]!;
+    const b = polygon[(i + 1) % polygon.length]!;
+
+    if (isEdgeOnViewportRect(a, b, rootRect)) {
+      continue;
+    }
+
+    context.beginPath();
+    context.moveTo(a.x, a.y);
+    context.lineTo(b.x, b.y);
+    context.stroke();
+  }
 }
 
 function tracePolygon(context: CanvasRenderingContext2D, polygon: CrackPoint[]) {
@@ -673,6 +700,40 @@ function isInteriorPolygon(
   );
 }
 
+function isEdgeOnViewportRect(
+  a: CrackPoint,
+  b: CrackPoint,
+  rect: { x0: number; y0: number; x1: number; y1: number },
+) {
+  const tolerance = 1;
+
+  return (
+    (Math.abs(a.y - rect.y0) < tolerance &&
+      Math.abs(b.y - rect.y0) < tolerance) ||
+    (Math.abs(a.y - rect.y1) < tolerance &&
+      Math.abs(b.y - rect.y1) < tolerance) ||
+    (Math.abs(a.x - rect.x0) < tolerance &&
+      Math.abs(b.x - rect.x0) < tolerance) ||
+    (Math.abs(a.x - rect.x1) < tolerance &&
+      Math.abs(b.x - rect.x1) < tolerance)
+  );
+}
+
 function randomSigned(max: number) {
   return (Math.random() * 2 - 1) * max;
+}
+
+function getSnapshotStyleProperties() {
+  if (snapshotStyleProperties) {
+    return snapshotStyleProperties;
+  }
+
+  snapshotStyleProperties = [
+    "font",
+    ...Array.from(window.getComputedStyle(document.documentElement)).filter(
+      (propertyName) => propertyName !== "font-size",
+    ),
+  ];
+
+  return snapshotStyleProperties;
 }
