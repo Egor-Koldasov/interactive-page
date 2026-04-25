@@ -45,15 +45,15 @@ const PADDLE_HALF_SPAN = (PADDLE_SIZE - 1) / 2;
 const PLAYER_X = 2;
 const BOT_X = BOARD_WIDTH - 3;
 const PLAYER_SPEED = 30;
-const BOT_TRACK_SPEED = 25;
-const BOT_CENTER_SPEED = 16;
-const BALL_BASE_SPEED = 26;
-const BALL_MAX_SPEED = 44;
+const BOT_TRACK_SPEED = 17;
+const BOT_CENTER_SPEED = 10;
+const BALL_BASE_SPEED = 20;
+const BALL_MAX_SPEED = 34;
 const MAX_DELTA_MS = 48;
 const SERVE_COUNTDOWN_MS = 1200;
 const MAX_BOUNCE_ANGLE = Math.PI / 3;
 const COUNTDOWN_SLICE_MS = SERVE_COUNTDOWN_MS / 3;
-const STATUS_WOBBLE_SCALE = 0.8;
+const STATUS_WOBBLE_SCALE = 1.7;
 const CENTER_LINE_X = Math.floor(BOARD_WIDTH / 2);
 
 export const PONG_SCORE_TO_WIN = 7;
@@ -68,6 +68,16 @@ function neutralY(height: number) {
 
 function clampPaddleY(value: number, height: number) {
   return clamp(value, PADDLE_HALF_SPAN, height - 1 - PADDLE_HALF_SPAN);
+}
+
+function paddleTopRow(centerY: number, height: number) {
+  return clamp(Math.round(centerY - PADDLE_HALF_SPAN), 0, height - PADDLE_SIZE);
+}
+
+function isPaddleRow(y: number, centerY: number, height: number) {
+  const topRow = paddleTopRow(centerY, height);
+
+  return y >= topRow && y < topRow + PADDLE_SIZE;
 }
 
 function reflectInsideCourt(value: number, maxValue: number) {
@@ -243,15 +253,19 @@ function predictedBotTarget(game: PongGameState) {
     game.ballY + game.ballVelocityY * timeToIntercept,
     game.height - 1,
   );
+  const distanceBias = clamp(distanceToBot / BOARD_WIDTH, 0, 1);
+  const readableMistake =
+    Math.sin(game.ballX * 0.49 + game.ballY * 0.73 + game.botScore) *
+    (1.2 + distanceBias * 1.1);
 
-  return clampPaddleY(projectedY + botDrift, game.height);
+  return clampPaddleY(projectedY + botDrift + readableMistake, game.height);
 }
 
 function applyBotMovement(game: PongGameState, deltaSeconds: number) {
   const scorePressure = clamp(game.playerScore - game.botScore, -2, 3);
   const baseSpeed =
     game.phase === "playing" && game.ballVelocityX > 0
-      ? BOT_TRACK_SPEED + scorePressure
+      ? BOT_TRACK_SPEED + scorePressure * 0.7
       : BOT_CENTER_SPEED;
   const targetY = predictedBotTarget(game);
   const deltaY = targetY - game.botY;
@@ -276,7 +290,7 @@ function bounceFromPaddle(
     side === "player" ? game.playerVelocity : game.botVelocity;
   const speed = clamp(
     Math.hypot(game.ballVelocityX, game.ballVelocityY) *
-      (side === "player" ? 1.04 : 1.03),
+      (side === "player" ? 1.025 : 1.015),
     BALL_BASE_SPEED,
     BALL_MAX_SPEED,
   );
@@ -465,12 +479,9 @@ export function buildPongFrame(game: PongGameState): PongFrame {
 
       if (x === roundedBallX && y === roundedBallY) {
         glyph = "o";
-      } else if (
-        x === PLAYER_X &&
-        Math.abs(y - game.playerY) <= PADDLE_HALF_SPAN
-      ) {
+      } else if (x === PLAYER_X && isPaddleRow(y, game.playerY, game.height)) {
         glyph = "#";
-      } else if (x === BOT_X && Math.abs(y - game.botY) <= PADDLE_HALF_SPAN) {
+      } else if (x === BOT_X && isPaddleRow(y, game.botY, game.height)) {
         glyph = "#";
       } else if (x === CENTER_LINE_X && y % 2 === 0) {
         glyph = ":";

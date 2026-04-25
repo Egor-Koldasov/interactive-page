@@ -115,6 +115,7 @@ type CommandResult = {
 };
 
 const terminalThemeOrder: TerminalThemeId[] = ["modern", "retro"];
+const PONG_FRAME_INTERVAL_MS = 50;
 
 const terminalThemes: Record<TerminalThemeId, TerminalTheme> = {
   modern: {
@@ -1735,7 +1736,6 @@ export function TerminalWindow({
     activeTab.entries,
     activeTabId,
     activeTab.input,
-    activeTab.pong,
   ]);
 
   const tickActivePong = useEffectEvent((now: number) => {
@@ -1779,12 +1779,22 @@ export function TerminalWindow({
       return;
     }
 
-    const intervalId = window.setInterval(() => {
-      tickActivePong(performance.now());
-    }, 33);
+    let rafId = 0;
+    let lastFrameAt = 0;
+
+    const frame = (now: number) => {
+      if (now - lastFrameAt >= PONG_FRAME_INTERVAL_MS) {
+        lastFrameAt = now;
+        tickActivePong(now);
+      }
+
+      rafId = window.requestAnimationFrame(frame);
+    };
+
+    rafId = window.requestAnimationFrame(frame);
 
     return () => {
-      window.clearInterval(intervalId);
+      window.cancelAnimationFrame(rafId);
     };
   }, [activeTabId, activePongPhase]);
 
