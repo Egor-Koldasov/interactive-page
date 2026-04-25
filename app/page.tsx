@@ -66,7 +66,7 @@ export default function Home() {
           <div className="flex min-h-0 w-full max-w-4xl flex-1 justify-center">
             <TerminalWindow
               currentBackgroundId={backgroundKind}
-              onCanvasCommand={() => {
+              onBreakCommand={() => {
                 setCanvasCrackTrigger((currentTrigger) => currentTrigger + 1);
               }}
               onBackgroundChange={(nextBackgroundKind) => {

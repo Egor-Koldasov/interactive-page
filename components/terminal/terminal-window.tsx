@@ -111,7 +111,7 @@ type CommandResult = {
   downloadUrl?: string;
   nextPongGame?: PongGameState;
   clearTerminal?: boolean;
-  renderCanvas?: boolean;
+  breakView?: boolean;
 };
 
 const terminalThemeOrder: TerminalThemeId[] = ["modern", "retro"];
@@ -243,7 +243,7 @@ const commandCatalog = {
   contacts: "Print email, GitHub, and Telegram contact details.",
   resume: "Explore the current resume and download the PDF.",
   pong: "Play a terminal ping-pong match against the bot.",
-  canvas: "Render the current view into a cracking canvas.",
+  break: "Render the current view into a cracking canvas.",
   theme: "List and switch terminal themes.",
   background: "List and switch ASCII backgrounds.",
 } as const;
@@ -363,8 +363,8 @@ function helpLines(): TerminalLine[] {
       segment("       Launch a classic terminal ping-pong match.", "muted"),
     ],
     [
-      segment("  canvas", "success"),
-      segment("     Render this view in canvas and crack it open.", "muted"),
+      segment("  break", "success"),
+      segment("      Crack the page open.", "muted"),
     ],
     [
       segment("  theme", "success"),
@@ -1109,18 +1109,17 @@ function runCommand(
     return runPongCommand(args);
   }
 
-  if (normalizedCommand === "canvas") {
+  if (normalizedCommand === "break") {
     return {
       entries: [
         output([
-          [segment("Rasterizing current view into canvas ...", "accent")],
+          [segment("Break the page!", "accent")],
           [
-            segment("Crack layer armed.", "success"),
-            segment(" Click the glass for more fractures; Esc clears it.", "muted"),
+            segment("Click the glass for more fractures; Esc clears it.", "muted"),
           ],
         ]),
       ],
-      renderCanvas: true,
+      breakView: true,
     };
   }
 
@@ -1151,7 +1150,7 @@ function submitInput(
   nextThemeId?: TerminalThemeId;
   nextBackgroundId?: BackgroundKind;
   nextDownloadUrl?: string;
-  shouldRenderCanvas?: boolean;
+  shouldBreakView?: boolean;
 } {
   const rawCommand = tab.input;
   const trimmedCommand = rawCommand.trim();
@@ -1201,7 +1200,7 @@ function submitInput(
     nextThemeId: commandResult.nextThemeId,
     nextBackgroundId: commandResult.nextBackgroundId,
     nextDownloadUrl: commandResult.downloadUrl,
-    shouldRenderCanvas: commandResult.renderCanvas,
+    shouldBreakView: commandResult.breakView,
   };
 }
 
@@ -1666,13 +1665,13 @@ function createInitialTerminalState(): TerminalState {
 type TerminalWindowProps = {
   currentBackgroundId: BackgroundKind;
   onBackgroundChange: (backgroundId: BackgroundKind) => void;
-  onCanvasCommand: () => void;
+  onBreakCommand: () => void;
 };
 
 export function TerminalWindow({
   currentBackgroundId,
   onBackgroundChange,
-  onCanvasCommand,
+  onBreakCommand,
 }: TerminalWindowProps) {
   const nextTabNumberRef = useRef(2);
   const terminalRef = useRef<HTMLElement>(null);
@@ -1984,7 +1983,7 @@ export function TerminalWindow({
         nextThemeId,
         nextBackgroundId,
         nextDownloadUrl,
-        shouldRenderCanvas,
+        shouldBreakView,
       } = submitInput(activeTab, themeId, currentBackgroundId);
 
       setTerminalState((currentState) => ({
@@ -2003,8 +2002,8 @@ export function TerminalWindow({
         triggerDownload(nextDownloadUrl);
       }
 
-      if (shouldRenderCanvas) {
-        onCanvasCommand();
+      if (shouldBreakView) {
+        onBreakCommand();
       }
 
       return;
